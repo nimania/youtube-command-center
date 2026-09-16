@@ -24,6 +24,7 @@
         <button class="nav-item" data-view="series"><span>▦</span>مجموعه‌ها</button>
         <button class="nav-item" data-view="audience"><span>◎</span>مخاطبان</button>
         <button class="nav-item" data-view="revenue"><span>◈</span>درآمد و تسویه</button>
+        <button class="nav-item" data-view="advisor"><span>✦</span>پیشنهادهای اختصاصی</button>
         <button class="nav-item" data-view="reports"><span>↗</span>گزارش‌ها</button>
       </nav>
       <div class="sidebar-bottom">
@@ -141,6 +142,31 @@
               <div class="panel-head"><div><p class="eyebrow">روش محاسبه</p><h2>این عدد چگونه ساخته می‌شود؟</h2></div></div>
               <div id="revenueFormula"></div>
               <p class="fine-print">این عدد برآورد مدیریتی است، نه مبلغ قطعی پرداخت AdSense یا محاسبهٔ رسمی مالیات. درآمد یوتیوب ممکن است در پایان ماه تعدیل شود.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-advisor">
+          <div class="advisor-hero">
+            <div><p class="eyebrow">موتور تصمیم‌یار اختصاصی</p><h2>قدم بعدی کانال، بر اساس داده‌های خودت</h2><p id="advisorSummary">در حال تحلیل الگوهای محتوا، مخاطب و درآمد…</p></div>
+            <div class="advisor-score"><span>فرصت رشد</span><strong id="opportunityScore">—</strong><small>امتیاز از ۱۰۰</small></div>
+          </div>
+          <div class="advisor-toolbar">
+            <div class="advisor-stat"><span>ویدئوهای تحلیل‌شده</span><strong id="analyzedCount">—</strong></div>
+            <div class="advisor-stat"><span>درآمد پوشش‌داده‌شده</span><strong id="analyzedRevenue">—</strong></div>
+            <div class="advisor-stat"><span>آخرین تحلیل</span><strong id="analysisTime">—</strong></div>
+            <button class="button ghost" id="refreshAdviceBtn">بازسازی پیشنهادها</button>
+          </div>
+          <div class="recommendation-list" id="recommendationList"></div>
+          <div class="dashboard-grid">
+            <article class="panel span-7">
+              <div class="panel-head"><div><p class="eyebrow">اقتصاد محتوا</p><h2>ویدئوهای درآمدساز و کارآمد</h2></div><span class="pill">RPM تقریبی</span></div>
+              <div class="table-wrap"><table class="advisor-table"><thead><tr><th>ویدئو</th><th>درآمد</th><th>RPM</th><th>ماندگاری</th><th>مشترک/هزار</th></tr></thead><tbody id="economicsTable"></tbody></table></div>
+            </article>
+            <article class="panel span-5">
+              <div class="panel-head"><div><p class="eyebrow">سیگنال‌های موضوعی</p><h2>چه واژه‌هایی پول و تماشا می‌سازند؟</h2></div></div>
+              <div class="topic-cloud" id="topicCloud"></div>
+              <p class="fine-print">این بخش عنوان، توضیحات و تگ‌های ویدئوها را با عملکرد واقعی آن‌ها وزن‌دهی می‌کند؛ تحلیل متن کامل گفتار در مرحلهٔ بعد با رونویسی اضافه می‌شود.</p>
             </article>
           </div>
         </section>
