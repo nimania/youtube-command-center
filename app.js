@@ -21,10 +21,16 @@ const state = {
   days:28,mode:"demo",videos:[...demoVideos],daily:buildDaily(28),accessToken:null,
   revenue:buildDemoRevenue(),revenueMode:"demo",taxRate:20,revenueCurrency:"USD",
   fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""},
-  analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null
+  analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null,
+  comments:buildDemoComments(),commentsPermission:false,commentStatus:"published",heldCount:1
 };
 
-function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views}))}
+function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views,publishedAt:`${v.date}T${String(15+(i%4)*2).padStart(2,"0")}:${i%2?"30":"00"}:00Z`}))}
+function buildDemoComments(){return[
+  {id:"c1",author:"آرش",avatar:"",text:"قسمت بعدی جان کلام دربارهٔ سناریوی گذار هم صحبت می‌کنید؟",publishedAt:new Date(Date.now()-46*60000).toISOString(),likes:12,videoTitle:"اپوزیسیون چندپاره، مردم دائم‌الاعتراض و رهبر ناتوان",status:"published",replyCount:0},
+  {id:"c2",author:"سارا",avatar:"",text:"تحلیل متعادل و قابل‌فهمی بود. مخصوصاً بخش مربوط به اعتماد عمومی.",publishedAt:new Date(Date.now()-3*3600000).toISOString(),likes:8,videoTitle:"چرا مردم ساکت هستند؟",status:"published",replyCount:1},
+  {id:"c3",author:"کاربر یوتیوب",avatar:"",text:"لطفاً منبع آماری که در دقیقهٔ چهار گفتید را هم در توضیحات بگذارید.",publishedAt:new Date(Date.now()-7*3600000).toISOString(),likes:3,videoTitle:"تجزیه‌طلبان، فدرالیسم و شاهزاده رضا پهلوی",status:"heldForReview",replyCount:0}
+]}
 
 function buildDaily(days){
   const slice=dayBase.slice(-Math.min(days,dayBase.length));
@@ -55,7 +61,7 @@ function sum(items,key){return items.reduce((a,x)=>a+(Number(x[key])||0),0)}
 function avg(items,key){return items.length?sum(items,key)/items.length:0}
 function showToast(message){const el=document.getElementById("toast");el.textContent=message;el.classList.add("show");clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove("show"),2800)}
 
-function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderAdvisor();renderReport();}
+function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderAdvisor();renderComments();renderReport();}
 
 function renderKPIs(){
   const views=sum(state.daily,"views"),watch=sum(state.daily,"watch"),subs=sum(state.daily,"subs"),ret=avg(state.videos,"retention");
@@ -172,7 +178,7 @@ async function loadRevenueData(token){
 
 function renderReport(){const top=[...state.videos].sort((a,b)=>b.score-a.score)[0],weak=[...state.videos].sort((a,b)=>a.retention-b.retention)[0],views=sum(state.daily,"views");document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>بازدید در ${n(state.days)} روز؛ روند کلی مثبت است و سرعت رشد در هفتهٔ اخیر افزایش یافته.</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top.title)}</strong></p><p>امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب مناسبی از کلیک، ماندگاری و جذب مشترک.</p></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>انتشار منظم جان کلام را حفظ کن؛ این مجموعه هم بازدید و هم مشترک می‌سازد.</li><li>برای ویدئوهای بلند، هوک را سریع‌تر وارد مسئله کن. «${esc(weak.title)}» کمترین ماندگاری این دوره را داشته است.</li><li>از موضوع‌های موفق بلند، یک شورتز مستقل بساز و در ۲۴ ساعت بعد منتشر کن.</li></ul></article><article class="report-card"><h3>هدف پیشنهادی</h3><p>افزایش میانگین ماندگاری ویدئوهای بلند به <strong>۵۵٪</strong> و تثبیت حداقل دو انتشار در هفته.</p></article><article class="report-card"><h3>آزمایش بعدی</h3><p>دو تیتر با ساختار «پرسش مستقیم» و «ادعای روشن» را روی موضوع‌های مشابه مقایسه کن.</p></article>`}
 
-function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
+function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",comments:"گفت‌وگو با مخاطب، در یک صندوق واحد.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
 
 async function startOAuth(){
   const msg=document.getElementById("oauthMessage");
@@ -182,6 +188,12 @@ async function startOAuth(){
   const client=google.accounts.oauth2.initTokenClient({client_id:cfg.googleClientId,scope:"https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/yt-analytics-monetary.readonly",callback:async response=>{if(response.error){msg.textContent=`خطای ورود: ${response.error}`;return}state.accessToken=response.access_token;await loadLiveData(response.access_token);document.getElementById("connectionDialog").close()}});client.requestAccessToken({prompt:"consent"});
 }
 async function api(url,token){const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json()}
+async function apiRequest(url,token,options={}){const r=await fetch(url,{...options,headers:{Authorization:`Bearer ${token}`,...(options.body?{"Content-Type":"application/json"}:{}),...(options.headers||{})}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.status===204?null:r.json()}
+async function requestCommentPermission(){
+  if(!window.google?.accounts?.oauth2){showToast("کتابخانهٔ ورود گوگل آماده نیست");return}
+  const scopes="https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/yt-analytics-monetary.readonly";
+  const client=google.accounts.oauth2.initTokenClient({client_id:cfg.googleClientId,scope:scopes,include_granted_scopes:true,callback:async response=>{if(response.error){showToast("مجوز مدیریت کامنت‌ها صادر نشد");return}state.accessToken=response.access_token;state.commentsPermission=true;if(!state.channelItem)await loadLiveData(response.access_token);await loadComments("published");renderComments();showToast("مدیریت کامنت‌ها فعال شد")}});client.requestAccessToken({prompt:"consent"});
+}
 async function loadLiveData(token){
   try{showToast("در حال دریافت آمار واقعی کانال…");const channel=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",token);const item=channel.items?.[0];if(!item)throw new Error("کانالی برای این حساب پیدا نشد");state.channelItem=item;const end=new Date(),start=new Date();start.setDate(end.getDate()-state.days);const dates=`startDate=${start.toISOString().slice(0,10)}&endDate=${end.toISOString().slice(0,10)}`;
     const daily=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=views,estimatedMinutesWatched,subscribersGained&sort=day`,token);
@@ -212,6 +224,33 @@ function topicSignals(videos){
     words.slice(0,40).forEach(word=>topics.set(word,(topics.get(word)||0)+quality));
   });
   return [...topics.entries()].map(([word,score])=>({word,score})).sort((a,b)=>b.score-a.score).slice(0,18);
+}
+
+function recordPerformanceSnapshot(videos){
+  try{const key="nimaYoutubeSnapshots",history=JSON.parse(localStorage.getItem(key)||"[]");history.push({at:Date.now(),views:Object.fromEntries(videos.map(v=>[v.id,v.views]))});localStorage.setItem(key,JSON.stringify(history.slice(-30)))}catch(e){console.warn("Snapshot storage unavailable",e)}
+}
+function snapshotVelocity(video){
+  try{const history=JSON.parse(localStorage.getItem("nimaYoutubeSnapshots")||"[]"),old=[...history].reverse().find(s=>Date.now()-s.at>12*3600000&&s.views?.[video.id]!=null);if(old){const days=Math.max(.5,(Date.now()-old.at)/864e5);return Math.max(0,(video.views-old.views[video.id])/days)}}catch(e){}
+  const age=Math.max(1,(Date.now()-new Date(video.publishedAt||video.date).getTime())/864e5);return video.views/Math.min(age,365);
+}
+function tehranParts(date){const parts=new Intl.DateTimeFormat("fa-IR",{timeZone:"Asia/Tehran",weekday:"long",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date(date));const weekday=parts.find(x=>x.type==="weekday")?.value||"نامشخص",raw=parts.find(x=>x.type==="hour")?.value||"0";return{weekday,hour:Number(raw.replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)))||0}}
+function timeBucket(hour){if(hour<6)return{key:"night",label:"نیمه‌شب تا ۶"};if(hour<12)return{key:"morning",label:"۶ تا ۱۲"};if(hour<18)return{key:"afternoon",label:"۱۲ تا ۱۸"};return{key:"evening",label:"۱۸ تا ۲۴"}}
+function durationLabel(v){if(v.format==="short")return"۳۰ تا ۶۰ ثانیه";const min=(v.duration||0)/60;if(min<8)return"۵ تا ۸ دقیقه";if(min<15)return"۸ تا ۱۵ دقیقه";return"بیش از ۱۵ دقیقه"}
+function publishingSignals(){
+  const videos=(state.analysisVideos||[]).filter(v=>v.views>0&&v.publishedAt),groups=new Map();if(!videos.length)return{slots:[],plans:[]};
+  const maxVelocity=Math.max(1,...videos.map(snapshotVelocity)),maxRpm=Math.max(.01,...videos.map(videoRPM));
+  videos.forEach(v=>{const t=tehranParts(v.publishedAt),bucket=timeBucket(t.hour),score=snapshotVelocity(v)/maxVelocity*46+(v.retention||0)/100*24+videoRPM(v)/maxRpm*20+Math.min(subRate(v)/10,1)*10,key=`${t.weekday}|${bucket.key}`;const row=groups.get(key)||{weekday:t.weekday,bucket:bucket.label,key,scores:[],hours:[],videos:[]};row.scores.push(score);row.hours.push(t.hour);row.videos.push(v);groups.set(key,row)});
+  const slots=[...groups.values()].map(g=>({...g,score:median(g.scores),recommendedHour:Math.round(median(g.hours)),count:g.videos.length})).sort((a,b)=>(b.count>=2)-(a.count>=2)||b.score-a.score);
+  const series={};videos.forEach(v=>(series[v.series||"سایر"]??=[]).push(v));
+  const plans=Object.entries(series).map(([name,items])=>{const best=[...items].sort((a,b)=>(snapshotVelocity(b)+videoRPM(b)*30+b.retention)-(snapshotVelocity(a)+videoRPM(a)*30+a.retention))[0],t=tehranParts(best.publishedAt),slot=slots.find(s=>s.key===`${t.weekday}|${timeBucket(t.hour).key}`)||slots[0];return{name,format:best.format,length:durationLabel(best),day:slot?.weekday||t.weekday,time:`حدود ساعت ${n(slot?.recommendedHour??t.hour)}:۰۰`,score:(sum(items,"revenue")+sum(items,"watch")/100)/Math.max(1,items.length),sample:best.title}}).sort((a,b)=>b.score-a.score).slice(0,3);
+  return{slots:slots.slice(0,8),plans};
+}
+function renderPublishingPlan(){
+  const root=document.getElementById("publishingPlan");if(!root)return;const {slots,plans}=publishingSignals(),best=slots[0];
+  document.getElementById("bestSlot").innerHTML=best?`<span>زمان پیشنهادی</span><strong>${esc(best.weekday)} · حدود ${n(best.recommendedHour)}:۰۰</strong><small>${esc(best.bucket)} · بر پایهٔ ${n(best.count)} انتشار مشابه</small>`:`<span>زمان پیشنهادی</span><strong>داده کافی نیست</strong><small>پس از اتصال ساخته می‌شود</small>`;
+  document.getElementById("plannerMethod").textContent=state.analysisUpdatedAt?"برآورد از ساعت انتشار، سرعت رشد، نگهداشت، جذب مشترک و RPM ویدئوهای خود کانال است؛ با هر همگام‌سازی دقیق‌تر می‌شود.":"نمونهٔ برنامه بر اساس دادهٔ نمایشی است؛ پس از اتصال با سابقهٔ واقعی کانال جایگزین می‌شود.";
+  root.innerHTML=plans.map((p,i)=>`<article class="plan-card"><span class="plan-number">${n(i+1)}</span><h3>${esc(p.name)}</h3><p>الگوی موفق نزدیک: ${esc(shortTitle(p.sample,58))}</p><div class="plan-meta"><span>${p.format==="short"?"شورتز":"ویدئوی بلند"}</span><span>${esc(p.length)}</span><span>${esc(p.day)}</span><span>${esc(p.time)}</span></div></article>`).join("")||`<div class="comment-empty">برای پیشنهاد زمان و طول، دادهٔ بیشتری لازم است.</div>`;
+  const max=Math.max(1,...slots.map(s=>s.score));document.getElementById("slotGrid").innerHTML=slots.map((s,i)=>`<div class="slot-cell ${i===0?"best":""}"><span>${esc(s.weekday)} · حدود ${n(s.recommendedHour)}:۰۰</span><strong>${esc(s.bucket)} · ${n(s.count)} ویدئو</strong><i style="--strength:${Math.max(8,s.score/max*100)}%"></i></div>`).join("");
 }
 
 function buildRecommendations(){
@@ -259,6 +298,7 @@ function renderAdvisor(){
   document.getElementById("economicsTable").innerHTML=ranked.map(v=>`<tr><td title="${esc(v.title)}">${esc(shortTitle(v.title,42))}</td><td>${formatDollar(v.revenue)}</td><td>${formatDollar(videoRPM(v))}</td><td>${n(v.retention,"decimal")}٪</td><td>${n(subRate(v),"decimal")}</td></tr>`).join("")||`<tr><td colspan="5">هنوز داده‌ای نیست.</td></tr>`;
   const colors=["#6d8cff","#a779ff","#38d39f","#ffbd59","#ff7b8a"],topics=topicSignals(videos),max=topics[0]?.score||1,min=topics.at(-1)?.score||0;
   document.getElementById("topicCloud").innerHTML=topics.map((t,i)=>`<span class="topic-tag" style="--tag-color:${colors[i%colors.length]};--tag-size:${10+((t.score-min)/Math.max(.01,max-min))*8}px">${esc(t.word)}</span>`).join("")||"سیگنال موضوعی کافی نیست.";
+  renderPublishingPlan();
 }
 
 async function analyticsPages(baseUrl,token){
@@ -281,10 +321,37 @@ async function loadRecommendationDataset(token,channelItem){
     const revenueById=new Map(money.map(r=>[r[0],Number(r[1])||0])),ids=performance.map(r=>r[0]),meta={};
     for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
     const recentById=new Map(state.videos.map(v=>[v.id,Number(v.views)||0]));
-    state.analysisVideos=performance.map(r=>{const m=meta[r[0]],duration=parseDuration(m?.contentDetails?.duration||""),format=duration<=70?"short":"long",title=m?.snippet?.title||r[0];return{id:r[0],title,description:m?.snippet?.description||"",tags:m?.snippet?.tags||[],date:m?.snippet?.publishedAt?.slice(0,10)||published,duration,format,series:detectSeries(title,format),views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),retention:Number(r[3])||0,subs:Number(r[4])||0,revenue:revenueById.get(r[0])||0,recentViews:recentById.get(r[0])||0,thumb:m?.snippet?.thumbnails?.medium?.url||""}});
-    state.analysisUpdatedAt=Date.now();renderAdvisor();
+    state.analysisVideos=performance.map(r=>{const m=meta[r[0]],duration=parseDuration(m?.contentDetails?.duration||""),format=duration<=70?"short":"long",title=m?.snippet?.title||r[0],publishedAt=m?.snippet?.publishedAt||`${published}T12:00:00Z`;return{id:r[0],title,description:m?.snippet?.description||"",tags:m?.snippet?.tags||[],date:publishedAt.slice(0,10),publishedAt,duration,format,series:detectSeries(title,format),views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),retention:Number(r[3])||0,subs:Number(r[4])||0,revenue:revenueById.get(r[0])||0,recentViews:recentById.get(r[0])||0,thumb:m?.snippet?.thumbnails?.medium?.url||""}});
+    recordPerformanceSnapshot(state.analysisVideos);state.analysisUpdatedAt=Date.now();renderAdvisor();
   }catch(e){console.error("Advisor analysis failed",e);showToast("تحلیل اختصاصی کامل نشد؛ دوباره امتحان کن")}
   finally{if(button){button.disabled=false;button.textContent="بازسازی پیشنهادها"}}
+}
+
+function relativeTime(date){const sec=Math.max(1,(Date.now()-new Date(date).getTime())/1000),units=[[86400,"روز"],[3600,"ساعت"],[60,"دقیقه"]];for(const [size,label] of units)if(sec>=size)return`${n(Math.floor(sec/size))} ${label} پیش`;return"همین حالا"}
+function commentVideoTitle(videoId){return state.analysisVideos.find(v=>v.id===videoId)?.title||state.videos.find(v=>v.id===videoId)?.title||"ویدئوی کانال"}
+async function loadComments(status=state.commentStatus){
+  state.commentStatus=status;const list=document.getElementById("commentList");if(list)list.innerHTML=`<div class="comment-empty">در حال دریافت کامنت‌ها…</div>`;
+  if(!state.commentsPermission||!state.accessToken||!state.channelItem?.id){renderComments();return}
+  try{
+    const url=`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet,replies&allThreadsRelatedToChannelId=${encodeURIComponent(state.channelItem.id)}&moderationStatus=${encodeURIComponent(status)}&order=time&maxResults=100&textFormat=plainText`,data=await api(url,state.accessToken);
+    state.comments=(data.items||[]).map(thread=>{const c=thread.snippet.topLevelComment,s=c.snippet;return{id:c.id,author:s.authorDisplayName||"کاربر یوتیوب",avatar:s.authorProfileImageUrl||"",text:s.textDisplay||s.textOriginal||"",publishedAt:s.publishedAt,likes:s.likeCount||0,videoId:thread.snippet.videoId||s.videoId,videoTitle:commentVideoTitle(thread.snippet.videoId||s.videoId),status:s.moderationStatus||status,replyCount:thread.snippet.totalReplyCount||0,canReply:thread.snippet.canReply!==false}});
+    if(status==="heldForReview")state.heldCount=state.comments.length;else{try{const held=await api(`https://www.googleapis.com/youtube/v3/commentThreads?part=id&allThreadsRelatedToChannelId=${encodeURIComponent(state.channelItem.id)}&moderationStatus=heldForReview&maxResults=1`,state.accessToken);state.heldCount=held.pageInfo?.totalResults||0}catch(e){console.warn("Held count unavailable",e)}}renderComments();
+  }catch(e){console.error("Comments failed",e);showToast("دریافت کامنت‌ها کامل نشد؛ مجوز را بررسی کن");renderComments()}
+}
+function filteredComments(){const q=(document.getElementById("commentSearch")?.value||"").trim().toLowerCase();return(state.comments||[]).filter(c=>(!q||`${c.author} ${c.text} ${c.videoTitle}`.toLowerCase().includes(q))&&(state.commentsPermission||c.status===state.commentStatus))}
+function renderComments(){
+  const root=document.getElementById("commentList");if(!root)return;const comments=filteredComments(),held=state.commentsPermission?state.heldCount:(state.comments||[]).filter(c=>c.status==="heldForReview").length,questions=comments.filter(c=>/[؟?]|چرا|چطور|کِی|کی |کجا|آیا/.test(c.text)).length;
+  document.getElementById("commentCount").textContent=n(comments.length);document.getElementById("heldCount").textContent=n(held);document.getElementById("questionCount").textContent=n(questions);
+  const note=document.getElementById("commentsPermissionNote");if(state.commentsPermission)note.innerHTML=`<span class="status-dot" style="background:var(--green)"></span><div><strong>مدیریت کامنت‌ها فعال است</strong><small>پاسخ‌ها و تغییر وضعیت مستقیماً روی YouTube اعمال می‌شوند.</small></div>`;else note.innerHTML=`<span class="status-dot"></span><div><strong>فعلاً دادهٔ نمونه نمایش داده می‌شود</strong><small>برای دیدن و مدیریت کامنت‌های واقعی، مجوز مدیریت کامنت‌ها را فعال کن.</small></div>`;
+  document.getElementById("enableCommentsBtn").textContent=state.commentsPermission?"مجوز فعال است":"فعال‌کردن مدیریت کامنت‌ها";document.getElementById("enableCommentsBtn").disabled=state.commentsPermission;
+  root.innerHTML=comments.map(c=>`<article class="comment-card" data-comment-id="${esc(c.id)}"><div class="comment-avatar" ${c.avatar?`style="background-image:url('${esc(c.avatar)}')"`:""}>${c.avatar?"":esc(c.author.slice(0,1))}</div><div><div class="comment-author"><strong>${esc(c.author)}</strong><span>${relativeTime(c.publishedAt)} · ${n(c.likes)} پسند</span></div><div class="comment-video">${esc(shortTitle(c.videoTitle,75))}${c.replyCount?` · ${n(c.replyCount)} پاسخ`:""}</div><p class="comment-text">${esc(c.text)}</p></div><div class="comment-actions">${c.status==="heldForReview"?`<button class="approve" data-comment-action="approve">تأیید و انتشار</button>`:""}<button data-comment-action="reply" ${c.canReply===false?"disabled":""}>پاسخ</button><button class="reject" data-comment-action="reject">مخفی‌کردن</button></div></article>`).join("")||`<div class="comment-empty">در این بخش کامنتی پیدا نشد.</div>`;
+}
+function openReply(comment){const dialog=document.getElementById("replyDialog");document.getElementById("replyToName").textContent=`پاسخ به ${comment.author}`;document.getElementById("replyOriginal").textContent=comment.text;document.getElementById("replyParentId").value=comment.id;document.getElementById("replyText").value="";dialog.showModal();setTimeout(()=>document.getElementById("replyText").focus(),80)}
+async function replyToComment(parentId,text){
+  if(!state.commentsPermission)return requestCommentPermission();await apiRequest("https://www.googleapis.com/youtube/v3/comments?part=snippet",state.accessToken,{method:"POST",body:JSON.stringify({snippet:{parentId,textOriginal:text}})});const c=state.comments.find(x=>x.id===parentId);if(c)c.replyCount=(c.replyCount||0)+1;renderComments();showToast("پاسخ در یوتیوب منتشر شد")
+}
+async function moderateComment(id,status){
+  if(!state.commentsPermission)return requestCommentPermission();const target=state.comments.find(c=>c.id===id),url=`https://www.googleapis.com/youtube/v3/comments/setModerationStatus?id=${encodeURIComponent(id)}&moderationStatus=${encodeURIComponent(status)}`;await apiRequest(url,state.accessToken,{method:"POST"});if(target?.status==="heldForReview")state.heldCount=Math.max(0,state.heldCount-1);state.comments=state.comments.filter(c=>c.id!==id);renderComments();showToast(status==="published"?"کامنت منتشر شد":"کامنت مخفی شد")
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
@@ -303,4 +370,11 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("revenueCurrency").addEventListener("change",e=>{state.revenueCurrency=e.target.value;renderRevenue()});
   document.getElementById("manualRate").addEventListener("change",e=>{const toman=Number(e.target.value);if(toman>0){localStorage.setItem("nimaManualUsdToman",String(toman));state.fx.usdToRial=toman*10;state.fx.source="نرخ دستی شما";state.fx.updatedAt=new Date();renderRevenue();showToast("نرخ دستی دلار ذخیره شد")}else{localStorage.removeItem("nimaManualUsdToman");loadFxRates()}});
   document.getElementById("refreshAdviceBtn")?.addEventListener("click",()=>{if(!state.accessToken){showToast("برای تحلیل واقعی، ابتدا حساب یوتیوب را متصل کن");return}loadRecommendationDataset(state.accessToken,state.channelItem)});
+  document.getElementById("enableCommentsBtn")?.addEventListener("click",requestCommentPermission);
+  document.getElementById("refreshCommentsBtn")?.addEventListener("click",()=>loadComments());
+  document.getElementById("commentSearch")?.addEventListener("input",renderComments);
+  document.querySelectorAll("[data-comment-status]").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll("[data-comment-status]").forEach(x=>x.classList.toggle("active",x===b));loadComments(b.dataset.commentStatus)}));
+  document.getElementById("commentList")?.addEventListener("click",async e=>{const action=e.target.closest("[data-comment-action]")?.dataset.commentAction,id=e.target.closest(".comment-card")?.dataset.commentId;if(!action||!id)return;const comment=state.comments.find(c=>c.id===id);try{if(action==="reply")openReply(comment);if(action==="approve")await moderateComment(id,"published");if(action==="reject"&&confirm("این کامنت از نمایش عمومی مخفی شود؟"))await moderateComment(id,"rejected")}catch(err){console.error(err);showToast("انجام این عملیات ممکن نشد")}});
+  const closeReply=()=>document.getElementById("replyDialog").close();document.getElementById("closeReplyDialog")?.addEventListener("click",closeReply);document.getElementById("cancelReply")?.addEventListener("click",closeReply);
+  document.getElementById("replyForm")?.addEventListener("submit",async e=>{e.preventDefault();const id=document.getElementById("replyParentId").value,text=document.getElementById("replyText").value.trim();if(!text)return;const submit=e.target.querySelector('[type="submit"]');submit.disabled=true;try{await replyToComment(id,text);closeReply()}catch(err){console.error(err);showToast("ارسال پاسخ ممکن نشد")}finally{submit.disabled=false}});
 });
