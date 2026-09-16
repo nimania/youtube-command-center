@@ -17,7 +17,11 @@ const demoVideos = [
 ];
 
 const dayBase = [6100,7200,6800,8300,7900,9400,11200,9800,10500,8900,12100,11800,13600,12900,15300,14700,13200,16100,15800,17400,16900,18800,18100,20700,19400,22600,21800,24100];
-const state = {days:28,mode:"demo",videos:[...demoVideos],daily:buildDaily(28),accessToken:null};
+const state = {
+  days:28,mode:"demo",videos:[...demoVideos],daily:buildDaily(28),accessToken:null,
+  revenue:buildDemoRevenue(),revenueMode:"demo",taxRate:20,revenueCurrency:"USD",
+  fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""}
+};
 
 function buildDaily(days){
   const slice=dayBase.slice(-Math.min(days,dayBase.length));
@@ -26,6 +30,17 @@ function buildDaily(days){
   const today=new Date("2026-09-16T12:00:00Z");
   return values.map((views,i)=>{const d=new Date(today);d.setUTCDate(d.getUTCDate()-(values.length-1-i));return {date:d.toISOString().slice(0,10),views,watch:Math.round(views*(.071+(i%5)*.003)),subs:Math.round(views*(.006+(i%4)*.0007))};});
 }
+
+function buildDemoRevenue(){
+  const now=new Date(),start=new Date(now.getFullYear(),now.getMonth()-1,1),rows=[];
+  for(let d=new Date(start);d<=now;d.setDate(d.getDate()+1)){
+    const i=rows.length,weekday=d.getDay();
+    const base=weekday===5?2.4:4.1+(i%7)*.48+((i*13)%9)*.11;
+    rows.push({date:localISO(d),revenue:Number(base.toFixed(2))});
+  }
+  return rows;
+}
+function localISO(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)}
 
 function n(value,type="number"){
   if(type==="compact") return compact.format(value);
@@ -37,7 +52,7 @@ function sum(items,key){return items.reduce((a,x)=>a+(Number(x[key])||0),0)}
 function avg(items,key){return items.length?sum(items,key)/items.length:0}
 function showToast(message){const el=document.getElementById("toast");el.textContent=message;el.classList.add("show");clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove("show"),2800)}
 
-function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderReport();}
+function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderReport();}
 
 function renderKPIs(){
   const views=sum(state.daily,"views"),watch=sum(state.daily,"watch"),subs=sum(state.daily,"subs"),ret=avg(state.videos,"retention");
@@ -51,7 +66,7 @@ function renderKPIs(){
 }
 
 function lineSVG(data,second=true){
-  const w=800,h=235,pad={x:20,y:18,b:26};const max=Math.max(...data.map(d=>d.views))*1.08;const maxW=Math.max(...data.map(d=>d.watch))*1.08;
+  const w=800,h=235,pad={x:20,y:18,b:26};const max=Math.max(1,...data.map(d=>d.views))*1.08;const maxW=Math.max(1,...data.map(d=>d.watch))*1.08;
   const point=(v,i,m)=>[pad.x+i*((w-pad.x*2)/(data.length-1||1)),h-pad.b-(v/m)*(h-pad.y-pad.b)];
   const pts=data.map((d,i)=>point(d.views,i,max));const wpts=data.map((d,i)=>point(d.watch,i,maxW));
   const path=pts.map((p,i)=>(i?"L":"M")+p.join(",")).join(" ");const wp=wpts.map((p,i)=>(i?"L":"M")+p.join(",")).join(" ");
@@ -96,16 +111,72 @@ function renderAudience(){
   const countries=[["ایران",62],["آلمان",9],["ایالات متحده",8],["کانادا",6],["ترکیه",5],["سایر",10]];document.getElementById("countryList").innerHTML=countries.map(x=>`<div class="country-row"><span>${x[0]}</span><div class="progress"><i style="--width:${x[1]}%"></i></div><strong>${n(x[1])}٪</strong></div>`).join("");
   document.getElementById("deviceChart").innerHTML=`<div class="donut"><div class="donut-label"><strong>۵۸٪</strong><span>موبایل</span></div></div><div class="device-legend">${[["موبایل",58,"#6d8cff"],["تلویزیون",22,"#ff4e61"],["رایانه",14,"#a779ff"],["تبلت",6,"#ffbd59"]].map(x=>`<div><i style="--c:${x[2]}"></i><span>${x[0]}</span><strong>${n(x[1])}٪</strong></div>`).join("")}</div>`;
 }
+async function loadFxRates(){
+  const manual=Number(localStorage.getItem("nimaManualUsdToman"));
+  try{
+    const [nobitex,globalFx]=await Promise.all([
+      fetch("https://apiv2.nobitex.ir/v3/orderbook/USDTIRT").then(r=>{if(!r.ok)throw new Error("Nobitex");return r.json()}),
+      fetch("https://open.er-api.com/v6/latest/USD").then(r=>{if(!r.ok)throw new Error("FX");return r.json()})
+    ]);
+    const bid=Number(nobitex.bids?.[0]?.[0]),ask=Number(nobitex.asks?.[0]?.[0]),last=Number(nobitex.lastTradePrice);
+    state.fx.usdToRial=manual?manual*10:(bid&&ask?(bid+ask)/2:last);
+    state.fx.usdToTry=Number(globalFx.rates?.TRY)||null;
+    state.fx.updatedAt=new Date(Number(nobitex.lastUpdate)||Date.now());
+    state.fx.source=manual?"نرخ دستی شما":"میانگین خرید و فروش USDT/IRR نوبیتکس";
+  }catch(e){
+    if(manual){state.fx.usdToRial=manual*10;state.fx.source="نرخ دستی شما";state.fx.updatedAt=new Date()}
+  }
+  const input=document.getElementById("manualRate");if(input&&state.fx.usdToRial)input.value=Math.round(state.fx.usdToRial/10);
+  renderRevenue();
+}
+function dateRevenue(date){return state.revenue.find(r=>r.date===date)?.revenue||0}
+function rangeRevenue(start,end){return state.revenue.filter(r=>r.date>=start&&r.date<=end).reduce((a,r)=>a+r.revenue,0)}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function revenuePeriods(){
+  const now=new Date(),today=localISO(now),yesterday=localISO(addDays(now,-1)),weekStart=localISO(addDays(now,-6));
+  const monthStart=localISO(new Date(now.getFullYear(),now.getMonth(),1));
+  const prevStart=localISO(new Date(now.getFullYear(),now.getMonth()-1,1)),prevEnd=localISO(new Date(now.getFullYear(),now.getMonth(),0));
+  return [
+    {label:"امروز",sub:today,value:dateRevenue(today),pending:true},
+    {label:"دیروز",sub:yesterday,value:dateRevenue(yesterday),pending:true},
+    {label:"۷ روز اخیر",sub:`${weekStart} تا امروز`,value:rangeRevenue(weekStart,today)},
+    {label:"ماه جاری تاکنون",sub:new Date(monthStart).toLocaleDateString("fa-IR",{month:"long",year:"numeric"}),value:rangeRevenue(monthStart,today),featured:true},
+    {label:"ماه میلادی قبل",sub:new Date(prevStart).toLocaleDateString("fa-IR",{month:"long",year:"numeric"}),value:rangeRevenue(prevStart,prevEnd)}
+  ];
+}
+function foreignValue(usd){return state.revenueCurrency==="TRY"?usd*(state.fx.usdToTry||1):usd}
+function foreignLabel(value){return new Intl.NumberFormat("fa-IR",{style:"currency",currency:state.revenueCurrency,maximumFractionDigits:2}).format(value)}
+function netRial(usd){return usd*(1-state.taxRate/100)*(state.fx.usdToRial||0)}
+function rialLabels(rial){return {rial:`${n(rial,"compact")} ریال`,toman:`${n(rial/10,"compact")} تومان`}}
+function renderRevenue(){
+  const grid=document.getElementById("revenueGrid");if(!grid)return;
+  const periods=revenuePeriods();
+  grid.innerHTML=periods.map(p=>{const converted=foreignValue(p.value),net=netRial(p.value),money=rialLabels(net);return `<article class="revenue-card ${p.featured?"featured":""}"><div class="period"><span>${p.label}</span>${p.pending?`<span class="pending">با تأخیر گزارش</span>`:""}</div><div class="foreign">${foreignLabel(converted)}</div><div class="gross-label">درآمد تخمینی ناخالص</div><div class="net-rial"><strong>${state.fx.usdToRial?money.toman:"نرخ تبدیل موجود نیست"}</strong><span>${state.fx.usdToRial?`${money.rial} · پس از کسر ${n(state.taxRate)}٪`:"نرخ دلار را دستی وارد کن"}</span></div></article>`}).join("");
+  const status=document.getElementById("revenueStatus"),latest=state.revenue.filter(x=>x.revenue>0).at(-1)?.date;
+  if(state.revenueMode==="live") status.innerHTML=`<span class="status-dot" style="background:var(--green)"></span><div><strong>درآمد واقعی YouTube Analytics متصل است</strong><small>آخرین روز دارای داده: ${latest?new Date(latest).toLocaleDateString("fa-IR"):"هنوز گزارشی نیامده"} · نرخ تبدیل: ${state.fx.source||"نامشخص"}</small></div>`;
+  else status.innerHTML=`<span class="status-dot"></span><div><strong>درآمد فعلاً نمایشی است</strong><small>برای دریافت درآمد واقعی، مجوز مالی YouTube Analytics را اضافه و دوباره متصل شو. نرخ تبدیل: ${state.fx.source||"در انتظار نرخ"}</small></div>`;
+  const chartRows=state.revenue.slice(-31).map(r=>({date:r.date,views:r.revenue,watch:r.revenue*(1-state.taxRate/100)}));document.getElementById("revenueChart").innerHTML=lineSVG(chartRows,true);
+  const rate=state.fx.usdToRial||0,month=periods[3],monthNet=netRial(month.value),labels=rialLabels(monthNet);
+  document.getElementById("revenueFormula").innerHTML=`<div class="formula-step"><i>۱</i><div><span>درآمد ناخالص ماه</span><strong>${foreignLabel(foreignValue(month.value))}</strong></div></div><div class="formula-step"><i>۲</i><div><span>پس از کسر مفروض ${n(state.taxRate)}٪</span><strong>${foreignLabel(foreignValue(month.value*(1-state.taxRate/100)))}</strong></div></div><div class="formula-step"><i>۳</i><div><span>نرخ دلار امروز</span><strong>${rate?`${n(rate/10)} تومان · ${n(rate)} ریال`:"وارد نشده"}</strong></div></div><div class="formula-step"><i>۴</i><div><span>برآورد خالص ماه جاری</span><strong>${rate?`${labels.toman} (${labels.rial})`:"—"}</strong></div></div>`;
+}
+async function loadRevenueData(token){
+  try{
+    const now=new Date(),start=new Date(now.getFullYear(),now.getMonth()-1,1),dates=`startDate=${localISO(start)}&endDate=${localISO(now)}`;
+    const report=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=estimatedRevenue&currency=USD&sort=day`,token);
+    state.revenue=(report.rows||[]).map(r=>({date:r[0],revenue:Number(r[1])||0}));state.revenueMode="live";renderRevenue();
+  }catch(e){console.warn("Revenue permission unavailable",e);state.revenueMode="demo";renderRevenue();showToast("برای درآمد واقعی، مجوز مالی Analytics را اضافه کن")}
+}
+
 function renderReport(){const top=[...state.videos].sort((a,b)=>b.score-a.score)[0],weak=[...state.videos].sort((a,b)=>a.retention-b.retention)[0],views=sum(state.daily,"views");document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>بازدید در ${n(state.days)} روز؛ روند کلی مثبت است و سرعت رشد در هفتهٔ اخیر افزایش یافته.</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top.title)}</strong></p><p>امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب مناسبی از کلیک، ماندگاری و جذب مشترک.</p></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>انتشار منظم جان کلام را حفظ کن؛ این مجموعه هم بازدید و هم مشترک می‌سازد.</li><li>برای ویدئوهای بلند، هوک را سریع‌تر وارد مسئله کن. «${esc(weak.title)}» کمترین ماندگاری این دوره را داشته است.</li><li>از موضوع‌های موفق بلند، یک شورتز مستقل بساز و در ۲۴ ساعت بعد منتشر کن.</li></ul></article><article class="report-card"><h3>هدف پیشنهادی</h3><p>افزایش میانگین ماندگاری ویدئوهای بلند به <strong>۵۵٪</strong> و تثبیت حداقل دو انتشار در هفته.</p></article><article class="report-card"><h3>آزمایش بعدی</h3><p>دو تیتر با ساختار «پرسش مستقیم» و «ادعای روشن» را روی موضوع‌های مشابه مقایسه کن.</p></article>`}
 
-function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
+function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
 
 async function startOAuth(){
   const msg=document.getElementById("oauthMessage");
   if(!cfg.googleClientId){msg.textContent="هنوز Client ID گوگل در config.js ثبت نشده است. پس از فعال‌شدن GitHub Pages، این مرحله را با هم انجام می‌دهیم.";return}
   if(!window.google?.accounts?.oauth2){msg.textContent="کتابخانهٔ ورود گوگل هنوز بارگذاری نشده؛ چند ثانیه بعد دوباره امتحان کن.";return}
   msg.textContent="پنجرهٔ ورود گوگل در حال بازشدن است…";
-  const client=google.accounts.oauth2.initTokenClient({client_id:cfg.googleClientId,scope:"https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",callback:async response=>{if(response.error){msg.textContent=`خطای ورود: ${response.error}`;return}state.accessToken=response.access_token;await loadLiveData(response.access_token);document.getElementById("connectionDialog").close()}});client.requestAccessToken({prompt:"consent"});
+  const client=google.accounts.oauth2.initTokenClient({client_id:cfg.googleClientId,scope:"https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/yt-analytics-monetary.readonly",callback:async response=>{if(response.error){msg.textContent=`خطای ورود: ${response.error}`;return}state.accessToken=response.access_token;await loadLiveData(response.access_token);document.getElementById("connectionDialog").close()}});client.requestAccessToken({prompt:"consent"});
 }
 async function api(url,token){const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json()}
 async function loadLiveData(token){
@@ -115,7 +186,7 @@ async function loadLiveData(token){
     const vr=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=video&metrics=views,estimatedMinutesWatched,averageViewPercentage,subscribersGained,likes,comments&sort=-views&maxResults=200`,token);
     const ids=(vr.rows||[]).map(r=>r[0]);let meta={};for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
     state.videos=(vr.rows||[]).map((r,i)=>{const m=meta[r[0]],title=m?.snippet?.title||r[0],duration=parseDuration(m?.contentDetails?.duration||"");const format=duration<=70?"short":"long";return{id:r[0],title,date:m?.snippet?.publishedAt?.slice(0,10)||"",format,series:detectSeries(title,format),views:r[1],watch:Math.round(r[2]/60),retention:r[3],subs:r[4],likes:r[5],comments:r[6],velocity:Math.round(r[1]*.42),score:scoreVideo(r[1],r[3],r[4]),thumb:m?.snippet?.thumbnails?.medium?.url}});
-    state.mode="live";document.getElementById("channelName").textContent=item.snippet.title;document.getElementById("channelAvatar").style.backgroundImage=`url('${item.snippet.thumbnails?.default?.url}')`;document.getElementById("channelAvatar").textContent="";document.getElementById("syncState").textContent="متصل به یوتیوب";document.getElementById("syncTime").textContent="همین حالا به‌روزرسانی شد";document.querySelector(".status-dot").style.background="var(--green)";renderAll();showToast("آمار واقعی کانال با موفقیت دریافت شد");
+    state.mode="live";document.getElementById("channelName").textContent=item.snippet.title;document.getElementById("channelAvatar").style.backgroundImage=`url('${item.snippet.thumbnails?.default?.url}')`;document.getElementById("channelAvatar").textContent="";document.getElementById("syncState").textContent="متصل به یوتیوب";document.getElementById("syncTime").textContent="همین حالا به‌روزرسانی شد";document.querySelector(".status-dot").style.background="var(--green)";renderAll();await loadRevenueData(token);showToast("آمار واقعی کانال با موفقیت دریافت شد");
   }catch(e){console.error(e);showToast("دریافت آمار کامل نشد؛ تنظیمات API را بررسی کن")}
 }
 function parseDuration(s){const m=s.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);return m?Number(m[1]||0)*3600+Number(m[2]||0)*60+Number(m[3]||0):0}
@@ -124,6 +195,7 @@ function scoreVideo(views,ret,subs){const max=Math.max(1,...state.videos.map(v=>
 
 document.addEventListener("DOMContentLoaded",()=>{
   renderAll();
+  loadFxRates();
   document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
   document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.go)));
   document.querySelectorAll(".date-range button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".date-range button").forEach(x=>x.classList.remove("active"));b.classList.add("active");state.days=Number(b.dataset.days);if(state.mode==="demo")state.daily=buildDaily(state.days);document.getElementById("pageSubtitle").textContent=`عملکرد ${b.textContent} اخیر در مقایسه با دورهٔ پیش`;renderAll()}));
@@ -133,4 +205,7 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("oauthStartBtn").addEventListener("click",startOAuth);
   document.getElementById("exportBtn").addEventListener("click",()=>{switchView("reports");setTimeout(()=>window.print(),250)});
   document.getElementById("generateReportBtn").addEventListener("click",()=>{renderReport();showToast("گزارش تازه بر اساس بازهٔ انتخاب‌شده ساخته شد")});
+  document.getElementById("taxRate").addEventListener("input",e=>{state.taxRate=Math.min(100,Math.max(0,Number(e.target.value)||0));renderRevenue()});
+  document.getElementById("revenueCurrency").addEventListener("change",e=>{state.revenueCurrency=e.target.value;renderRevenue()});
+  document.getElementById("manualRate").addEventListener("change",e=>{const toman=Number(e.target.value);if(toman>0){localStorage.setItem("nimaManualUsdToman",String(toman));state.fx.usdToRial=toman*10;state.fx.source="نرخ دستی شما";state.fx.updatedAt=new Date();renderRevenue();showToast("نرخ دستی دلار ذخیره شد")}else{localStorage.removeItem("nimaManualUsdToman");loadFxRates()}});
 });
