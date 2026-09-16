@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260916-8" />
+    <link rel="stylesheet" href="styles.css?v=20260916-9" />
   </head>
   <body>
     <div class="noise"></div>
@@ -20,6 +20,7 @@
       </div>
       <nav aria-label="ناوبری اصلی">
         <button class="nav-item active" data-view="coach"><span>✦</span>مربی من</button>
+        <button class="nav-item" data-view="studio"><span>◇</span>استودیوی رشد</button>
         <button class="nav-item" data-view="overview"><span>◫</span>اتاق آمار</button>
         <button class="nav-item" data-view="videos"><span>▶</span>تحلیل ویدئوها</button>
         <button class="nav-item" data-view="series"><span>▦</span>مجموعه‌ها</button>
@@ -102,6 +103,46 @@
             <div class="coach-panel-head"><div><p class="eyebrow">نقشهٔ راه مشترک</p><h2>از امروز تا پایان فصل</h2></div><span class="pill">پویا و قابل‌اصلاح</span></div>
             <div class="roadmap" id="coachRoadmap"></div>
           </article>
+        </section>
+
+        <section class="view" id="view-studio">
+          <div class="studio-hero">
+            <div><p class="eyebrow">از توصیه تا نتیجه</p><h2>استودیوی رشد کانال</h2><p>مربی فقط نمی‌گوید چه اتفاقی افتاده؛ ایده را انتخاب می‌کند، وارد تولید می‌کند و بعد از انتشار از نتیجه یاد می‌گیرد.</p></div>
+            <div class="goal-switcher" id="growthGoalSwitcher" aria-label="هدف اصلی رشد">
+              <button data-growth-goal="revenue">درآمد</button><button data-growth-goal="growth">رشد مخاطب</button><button data-growth-goal="watch">زمان تماشا</button><button data-growth-goal="consistency">انتشار منظم</button>
+            </div>
+          </div>
+
+          <div class="studio-grid idea-layout">
+            <article class="studio-panel idea-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">صف تصمیم</p><h2>ایده‌های امتیازدار</h2><p>امتیاز هر ایده با هدف انتخاب‌شده و سابقهٔ واقعی کانال تغییر می‌کند.</p></div><button class="button ghost" id="addManualIdeaBtn">افزودن ایده</button></div>
+              <div class="idea-queue" id="ideaQueue"></div>
+            </article>
+            <article class="studio-panel weekly-brief-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">بدون عددزدگی</p><h2>گزارش این هفته</h2></div><span class="spark">✦</span></div>
+              <div id="weeklyBrief"></div>
+            </article>
+          </div>
+
+          <article class="studio-panel pipeline-panel">
+            <div class="coach-panel-head"><div><p class="eyebrow">خط تولید محتوا</p><h2>هر ایده دقیقاً کجاست؟</h2><p>کارت‌ها را با دکمهٔ مرحلهٔ بعد جلو ببر؛ وضعیت در همین مرورگر ذخیره می‌شود.</p></div><span class="pill" id="pipelineCount">۰ محتوای فعال</span></div>
+            <div class="content-pipeline" id="contentPipeline"></div>
+          </article>
+
+          <div class="studio-grid studio-triple">
+            <article class="studio-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">پس از انتشار</p><h2>ارزیابی ۲۴ ساعت، ۷ و ۲۸ روز</h2></div></div>
+              <div class="checkpoint-list" id="checkpointList"></div>
+            </article>
+            <article class="studio-panel rescue-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">اقدام به‌موقع</p><h2>مرکز نجات ویدئو</h2></div><span class="rescue-count" id="rescueCount">۰</span></div>
+              <div class="rescue-list" id="rescueList"></div>
+            </article>
+            <article class="studio-panel experiment-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">حافظهٔ آزمایش</p><h2>عنوان و تامنیل</h2></div><button class="text-btn" id="addExperimentBtn">آزمایش تازه</button></div>
+              <div class="experiment-list" id="experimentList"></div>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="view-overview">
@@ -328,9 +369,28 @@
         <div class="dialog-actions"><button class="button ghost" type="button" id="cancelAnalysisScope">انصراف</button><button class="button primary" type="submit">اعمال و بازسازی مربی</button></div>
       </form>
     </dialog>
+    <dialog id="ideaDialog">
+      <form class="dialog-card" id="ideaForm">
+        <button class="dialog-close" type="button" data-close-dialog="ideaDialog" aria-label="بستن">×</button>
+        <p class="eyebrow">ایدهٔ شخصی</p><h2>یک ایده به صف اضافه کن</h2>
+        <div class="goal-fields"><label>عنوان یا موضوع<input id="manualIdeaTitle" required maxlength="160"></label><label>قالب<select id="manualIdeaFormat"><option value="long">ویدئوی بلند</option><option value="short">شورتز</option></select></label></div>
+        <label class="dialog-wide-label">یادداشت کوتاه<textarea id="manualIdeaNote" rows="3" maxlength="500" placeholder="زاویه، مهمان، منبع یا نکتهٔ مهم…"></textarea></label>
+        <div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog="ideaDialog">انصراف</button><button class="button primary" type="submit">افزودن به صف</button></div>
+      </form>
+    </dialog>
+    <dialog id="experimentDialog">
+      <form class="dialog-card" id="experimentForm">
+        <button class="dialog-close" type="button" data-close-dialog="experimentDialog" aria-label="بستن">×</button>
+        <p class="eyebrow">آزمایش بسته‌بندی</p><h2>دو نسخه را قبل از انتشار ثبت کن</h2>
+        <label class="dialog-wide-label">ویدئو یا موضوع<input id="experimentVideo" required maxlength="160"></label>
+        <div class="goal-fields"><label>عنوان A<input id="experimentA" required maxlength="100"></label><label>عنوان B<input id="experimentB" required maxlength="100"></label></div>
+        <label class="dialog-wide-label">تفاوت تامنیل‌ها<textarea id="experimentThumb" rows="3" maxlength="500" placeholder="مثلاً چهره نزدیک در A، تیتر کوتاه‌تر در B…"></textarea></label>
+        <div class="dialog-actions"><button class="button ghost" type="button" data-close-dialog="experimentDialog">انصراف</button><button class="button primary" type="submit">ثبت آزمایش</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="config.js"></script>
-    <script src="app.js?v=20260916-8"></script>
+    <script src="app.js?v=20260916-9"></script>
   </body>
 </html>
