@@ -23,6 +23,7 @@
         <button class="nav-item" data-view="videos"><span>▶</span>تحلیل ویدئوها</button>
         <button class="nav-item" data-view="series"><span>▦</span>مجموعه‌ها</button>
         <button class="nav-item" data-view="audience"><span>◎</span>مخاطبان</button>
+        <button class="nav-item" data-view="revenue"><span>◈</span>درآمد و تسویه</button>
         <button class="nav-item" data-view="reports"><span>↗</span>گزارش‌ها</button>
       </nav>
       <div class="sidebar-bottom">
@@ -118,6 +119,30 @@
             <article class="panel span-5"><div class="panel-head"><div><p class="eyebrow">منابع کشف</p><h2>مخاطب از کجا می‌آید؟</h2></div></div><div id="sourceList" class="source-list"></div></article>
           </div>
           <div class="dashboard-grid"><article class="panel span-6"><div class="panel-head"><div><p class="eyebrow">جغرافیا</p><h2>کشورهای اصلی</h2></div></div><div id="countryList" class="country-list"></div></article><article class="panel span-6"><div class="panel-head"><div><p class="eyebrow">دستگاه</p><h2>نحوهٔ تماشا</h2></div></div><div id="deviceChart" class="device-chart"></div></article></div>
+        </section>
+
+        <section class="view" id="view-revenue">
+          <div class="revenue-hero">
+            <div><p class="eyebrow">برآورد درآمد خالص</p><h2>پول واقعی، بعد از کسر و تبدیل</h2><p>درآمد تخمینی یوتیوب × درصد باقی‌مانده × نرخ روز بازار</p></div>
+            <div class="revenue-controls">
+              <label>نمایش ارزی<select id="revenueCurrency"><option value="USD">دلار (USD)</option><option value="TRY">لیر ترکیه (TRY)</option></select></label>
+              <label>کسر مفروض<div class="suffix-input"><input id="taxRate" type="number" min="0" max="100" step="1" value="20"><span>٪</span></div></label>
+              <label>دلار بازار<div class="suffix-input wide"><input id="manualRate" type="number" min="1" step="1000"><span>تومان</span></div></label>
+            </div>
+          </div>
+          <div class="revenue-note" id="revenueStatus"><span class="status-dot"></span><div><strong>در حال آماده‌سازی درآمد</strong><small>اطلاعات درآمد یوتیوب معمولاً با تأخیر تکمیل می‌شود.</small></div></div>
+          <div class="revenue-grid" id="revenueGrid"></div>
+          <div class="dashboard-grid">
+            <article class="panel span-8">
+              <div class="panel-head"><div><p class="eyebrow">روند درآمد</p><h2>درآمد روزانهٔ تخمینی</h2></div><div class="legend"><span><i class="blue"></i>ناخالص</span><span><i class="red"></i>پس از کسر</span></div></div>
+              <div class="line-chart" id="revenueChart"></div>
+            </article>
+            <article class="panel span-4 calculation-card">
+              <div class="panel-head"><div><p class="eyebrow">روش محاسبه</p><h2>این عدد چگونه ساخته می‌شود؟</h2></div></div>
+              <div id="revenueFormula"></div>
+              <p class="fine-print">این عدد برآورد مدیریتی است، نه مبلغ قطعی پرداخت AdSense یا محاسبهٔ رسمی مالیات. درآمد یوتیوب ممکن است در پایان ماه تعدیل شود.</p>
+            </article>
+          </div>
         </section>
 
         <section class="view" id="view-reports">
