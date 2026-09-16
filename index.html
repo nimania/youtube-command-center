@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260916-4" />
+    <link rel="stylesheet" href="styles.css?v=20260916-5" />
   </head>
   <body>
     <div class="noise"></div>
@@ -46,7 +46,8 @@
         </div>
         <div class="top-actions">
           <div class="date-range" role="group" aria-label="بازه زمانی">
-            <button data-days="7">۷ روز</button><button class="active" data-days="28">۲۸ روز</button><button data-days="90">۹۰ روز</button>
+            <button data-range-preset="7d">۷ روز</button><button class="active" data-range-preset="28d">۲۸ روز</button><button data-range-preset="90d">۹۰ روز</button>
+            <button class="range-more" id="openRangeDialog" type="button"><span id="activeRangeLabel">بازه‌های بیشتر</span>⌄</button>
           </div>
           <button class="button ghost" id="exportBtn">خروجی گزارش</button>
           <button class="button primary" id="connectBtn"><span>G</span> اتصال به یوتیوب</button>
@@ -227,9 +228,30 @@
         <div class="dialog-actions"><button class="button ghost" type="button" id="cancelReply">انصراف</button><button class="button primary" type="submit">ارسال پاسخ</button></div>
       </form>
     </dialog>
+    <dialog id="rangeDialog" class="range-dialog">
+      <form class="dialog-card range-card" id="rangeForm">
+        <button class="dialog-close" type="button" id="closeRangeDialog" aria-label="بستن">×</button>
+        <p class="eyebrow">مرکز بازه و مقایسه</p><h2>چه دوره‌ای را بررسی کنیم؟</h2>
+        <p>یک دورهٔ آماده انتخاب کن یا تاریخ شروع و پایان را خودت تعیین کن. تمام نمودارها، ویدئوها و گزارش مدیریتی با همان بازه دوباره محاسبه می‌شوند.</p>
+        <div class="range-presets" id="rangePresets">
+          <button type="button" data-dialog-preset="today">امروز</button><button type="button" data-dialog-preset="yesterday">دیروز</button><button type="button" data-dialog-preset="thisWeek">هفتهٔ جاری</button><button type="button" data-dialog-preset="lastWeek">هفتهٔ قبل</button>
+          <button type="button" data-dialog-preset="7d">۷ روز اخیر</button><button type="button" data-dialog-preset="28d" class="active">۲۸ روز اخیر</button><button type="button" data-dialog-preset="90d">۹۰ روز اخیر</button><button type="button" data-dialog-preset="180d">۶ ماه اخیر</button>
+          <button type="button" data-dialog-preset="365d">۳۶۵ روز اخیر</button><button type="button" data-dialog-preset="730d">۲ سال اخیر</button>
+          <button type="button" data-dialog-preset="thisMonth">ماه جاری</button><button type="button" data-dialog-preset="lastMonth">ماه قبل</button><button type="button" data-dialog-preset="thisQuarter">فصل جاری</button><button type="button" data-dialog-preset="lastQuarter">فصل قبل</button>
+          <button type="button" data-dialog-preset="thisYear">سال جاری</button><button type="button" data-dialog-preset="lastYear">سال قبل</button><button type="button" data-dialog-preset="allTime">از آغاز کانال</button><button type="button" data-dialog-preset="custom">بازهٔ دلخواه</button>
+        </div>
+        <div class="custom-range-fields">
+          <label>از تاریخ<input type="date" id="rangeStart" required></label>
+          <label>تا تاریخ<input type="date" id="rangeEnd" required></label>
+          <label>نوع مقایسه<select id="comparisonMode"><option value="previous">دورهٔ قبل با طول برابر</option><option value="year">همین بازه در سال قبل</option><option value="none">بدون مقایسه</option></select></label>
+        </div>
+        <div class="range-preview" id="rangePreview"></div>
+        <div class="dialog-actions"><button class="button ghost" type="button" id="cancelRangeDialog">انصراف</button><button class="button primary" type="submit" id="applyRangeBtn">اعمال بازه</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="config.js"></script>
-    <script src="app.js?v=20260916-4"></script>
+    <script src="app.js?v=20260916-5"></script>
   </body>
 </html>
