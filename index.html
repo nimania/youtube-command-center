@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260916-5" />
+    <link rel="stylesheet" href="styles.css?v=20260916-6" />
   </head>
   <body>
     <div class="noise"></div>
@@ -19,7 +19,8 @@
         <div><strong>مرکز فرمان</strong><span>YOUTUBE INTELLIGENCE</span></div>
       </div>
       <nav aria-label="ناوبری اصلی">
-        <button class="nav-item active" data-view="overview"><span>◫</span>نمای کلی</button>
+        <button class="nav-item active" data-view="coach"><span>✦</span>مربی من</button>
+        <button class="nav-item" data-view="overview"><span>◫</span>اتاق آمار</button>
         <button class="nav-item" data-view="videos"><span>▶</span>تحلیل ویدئوها</button>
         <button class="nav-item" data-view="series"><span>▦</span>مجموعه‌ها</button>
         <button class="nav-item" data-view="audience"><span>◎</span>مخاطبان</button>
@@ -56,11 +57,53 @@
 
       <section class="content">
         <div class="welcome-row">
-          <div><p class="eyebrow">تصویر امروز کانال</p><h1 id="pageTitle">صبح بخیر نیما؛ این‌جا نبض کانال است.</h1><p id="pageSubtitle">عملکرد ۲۸ روز اخیر در مقایسه با دورهٔ پیش</p></div>
+          <div><p class="eyebrow">مربی رشد کانال</p><h1 id="pageTitle">امروز قدم بعدی کانال را روشن کنیم.</h1><p id="pageSubtitle">برنامهٔ ساده، ارزیابی واقعی و مسیر قابل‌اصلاح</p></div>
           <div class="health-score"><div class="score-ring" id="scoreRing"><strong id="healthScore">۸۲</strong><small>از ۱۰۰</small></div><div><span>سلامت کانال</span><strong id="healthLabel">رو به رشد</strong></div></div>
         </div>
 
-        <section class="view active" id="view-overview">
+        <section class="view active" id="view-coach">
+          <div class="coach-brief">
+            <div class="coach-brief-copy"><span class="coach-avatar">ج</span><div><p class="eyebrow">جمع‌بندی مربی</p><h2 id="coachHeadline">در حال شناخت وضعیت کانال…</h2><p id="coachNarrative">آمار پشت صحنه بررسی می‌شود تا فقط تصمیم‌های لازم را ببینی.</p></div></div>
+            <div class="coach-direction"><span>وضعیت مسیر</span><strong id="coachDirection">در حال ارزیابی</strong><small id="coachConfidence">—</small></div>
+          </div>
+
+          <div class="coach-grid">
+            <article class="coach-panel coach-actions-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">تمرکز امروز</p><h2>امروز چه کار کنم؟</h2></div><span class="coach-date" id="coachToday"></span></div>
+              <div class="today-actions" id="todayActions"></div>
+            </article>
+            <article class="coach-panel coach-progress-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">مسیر ماه</p><h2>آیا به هدف می‌رسیم؟</h2></div><button class="text-btn" id="editGoalsBtn">تنظیم هدف‌ها</button></div>
+              <div class="goal-progress-list" id="goalProgressList"></div>
+              <div class="forecast-box" id="coachForecast"></div>
+            </article>
+          </div>
+
+          <article class="coach-panel weekly-plan-panel">
+            <div class="coach-panel-head"><div><p class="eyebrow">برنامهٔ قابل‌اجرا</p><h2>نقشهٔ این هفته</h2><p>کارها را انجام بده و تیک بزن؛ ارزیابی بعدی بر اساس همین برنامه ساخته می‌شود.</p></div><button class="button ghost" id="rebuildPlanBtn">بازسازی برنامه</button></div>
+            <div class="week-calendar" id="weekCalendar"></div>
+          </article>
+
+          <div class="coach-grid coach-bottom-grid">
+            <article class="coach-panel evaluation-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">یادگیری از نتیجه</p><h2>ارزیابی آخرین حرکت</h2></div><span class="evaluation-badge" id="evaluationBadge">در انتظار داده</span></div>
+              <div id="lastEvaluation"></div>
+            </article>
+            <article class="coach-panel next-move-panel">
+              <div class="coach-panel-head"><div><p class="eyebrow">یک پیشنهاد مهم</p><h2 id="nextMoveTitle">قدم بعدی پیشنهادی</h2></div><span class="spark">✦</span></div>
+              <p id="nextMoveBody">با کامل‌شدن تحلیل، مهم‌ترین پیشنهاد این‌جا نمایش داده می‌شود.</p>
+              <div class="next-move-proof" id="nextMoveProof"></div>
+              <button class="button primary" id="addSuggestionBtn">افزودن به برنامهٔ هفته</button>
+            </article>
+          </div>
+
+          <article class="coach-panel roadmap-panel">
+            <div class="coach-panel-head"><div><p class="eyebrow">نقشهٔ راه مشترک</p><h2>از امروز تا پایان فصل</h2></div><span class="pill">پویا و قابل‌اصلاح</span></div>
+            <div class="roadmap" id="coachRoadmap"></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-overview">
           <div class="kpi-grid" id="kpiGrid"></div>
 
           <div class="dashboard-grid top-grid">
@@ -249,9 +292,23 @@
         <div class="dialog-actions"><button class="button ghost" type="button" id="cancelRangeDialog">انصراف</button><button class="button primary" type="submit" id="applyRangeBtn">اعمال بازه</button></div>
       </form>
     </dialog>
+    <dialog id="goalsDialog">
+      <form class="dialog-card" id="goalsForm">
+        <button class="dialog-close" type="button" id="closeGoalsDialog" aria-label="بستن">×</button>
+        <p class="eyebrow">هدف‌های قابل‌اندازه‌گیری</p><h2>این ماه به کجا برسیم؟</h2>
+        <p>عددها فقط برای محاسبه‌اند؛ مربی آن‌ها را به برنامه و اقدام‌های ساده تبدیل می‌کند.</p>
+        <div class="goal-fields">
+          <label>هدف بازدید ماهانه<input type="number" id="goalViews" min="0" step="1000"></label>
+          <label>هدف درآمد ماهانه (دلار)<input type="number" id="goalRevenue" min="0" step="10"></label>
+          <label>تعداد انتشار در ماه<input type="number" id="goalUploads" min="1" max="100"></label>
+          <label>هدف میانگین مشاهده (%)<input type="number" id="goalRetention" min="1" max="100" step="1"></label>
+        </div>
+        <div class="dialog-actions"><button class="button ghost" type="button" id="cancelGoalsDialog">انصراف</button><button class="button primary" type="submit">ذخیره و بازسازی مسیر</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="config.js"></script>
-    <script src="app.js?v=20260916-5"></script>
+    <script src="app.js?v=20260916-6"></script>
   </body>
 </html>
