@@ -22,7 +22,8 @@ const state = {
   revenue:buildDemoRevenue(),revenueMode:"demo",taxRate:20,revenueCurrency:"USD",
   fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""},
   analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null,
-  comments:buildDemoComments(),commentsPermission:false,commentStatus:"published",heldCount:1
+  comments:buildDemoComments(),commentsPermission:false,commentStatus:"published",heldCount:1,
+  publicHistory:[],historyUpdatedAt:null
 };
 
 function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views,publishedAt:`${v.date}T${String(15+(i%4)*2).padStart(2,"0")}:${i%2?"30":"00"}:00Z`}))}
@@ -230,8 +231,13 @@ function recordPerformanceSnapshot(videos){
   try{const key="nimaYoutubeSnapshots",history=JSON.parse(localStorage.getItem(key)||"[]");history.push({at:Date.now(),views:Object.fromEntries(videos.map(v=>[v.id,v.views]))});localStorage.setItem(key,JSON.stringify(history.slice(-30)))}catch(e){console.warn("Snapshot storage unavailable",e)}
 }
 function snapshotVelocity(video){
+  const publicRows=(state.publicHistory||[]).map(snapshot=>({at:new Date(snapshot.capturedAt||snapshot.date).getTime(),video:snapshot.videos?.find(v=>v.id===video.id)})).filter(row=>row.video&&Number.isFinite(row.at));
+  if(publicRows.length>=2){const first=publicRows[0],last=publicRows.at(-1),days=Math.max(1,(last.at-first.at)/864e5),growth=(Number(last.video.views)||0)-(Number(first.video.views)||0);if(growth>=0)return growth/days}
   try{const history=JSON.parse(localStorage.getItem("nimaYoutubeSnapshots")||"[]"),old=[...history].reverse().find(s=>Date.now()-s.at>12*3600000&&s.views?.[video.id]!=null);if(old){const days=Math.max(.5,(Date.now()-old.at)/864e5);return Math.max(0,(video.views-old.views[video.id])/days)}}catch(e){}
   const age=Math.max(1,(Date.now()-new Date(video.publishedAt||video.date).getTime())/864e5);return video.views/Math.min(age,365);
+}
+async function loadPublicHistory(){
+  try{const response=await fetch(`data/public-snapshots.json?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`History ${response.status}`);const data=await response.json();state.publicHistory=(data.snapshots||[]).sort((a,b)=>a.date.localeCompare(b.date));state.historyUpdatedAt=data.updatedAt||null;renderAdvisor()}catch(e){console.warn("Public history unavailable",e)}
 }
 function tehranParts(date){const parts=new Intl.DateTimeFormat("fa-IR",{timeZone:"Asia/Tehran",weekday:"long",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date(date));const weekday=parts.find(x=>x.type==="weekday")?.value||"نامشخص",raw=parts.find(x=>x.type==="hour")?.value||"0";return{weekday,hour:Number(raw.replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)))||0}}
 function timeBucket(hour){if(hour<6)return{key:"night",label:"نیمه‌شب تا ۶"};if(hour<12)return{key:"morning",label:"۶ تا ۱۲"};if(hour<18)return{key:"afternoon",label:"۱۲ تا ۱۸"};return{key:"evening",label:"۱۸ تا ۲۴"}}
@@ -248,7 +254,7 @@ function publishingSignals(){
 function renderPublishingPlan(){
   const root=document.getElementById("publishingPlan");if(!root)return;const {slots,plans}=publishingSignals(),best=slots[0];
   document.getElementById("bestSlot").innerHTML=best?`<span>زمان پیشنهادی</span><strong>${esc(best.weekday)} · حدود ${n(best.recommendedHour)}:۰۰</strong><small>${esc(best.bucket)} · بر پایهٔ ${n(best.count)} انتشار مشابه</small>`:`<span>زمان پیشنهادی</span><strong>داده کافی نیست</strong><small>پس از اتصال ساخته می‌شود</small>`;
-  document.getElementById("plannerMethod").textContent=state.analysisUpdatedAt?"برآورد از ساعت انتشار، سرعت رشد، نگهداشت، جذب مشترک و RPM ویدئوهای خود کانال است؛ با هر همگام‌سازی دقیق‌تر می‌شود.":"نمونهٔ برنامه بر اساس دادهٔ نمایشی است؛ پس از اتصال با سابقهٔ واقعی کانال جایگزین می‌شود.";
+  document.getElementById("plannerMethod").textContent=state.analysisUpdatedAt?`برآورد از ساعت انتشار، سرعت رشد، نگهداشت، جذب مشترک و RPM است${state.publicHistory.length?`؛ سرعت رشد با ${n(state.publicHistory.length)} snapshot روزانه سنجیده می‌شود`:"؛ پس از اولین اجرای جمع‌آورنده، حافظهٔ روزانه نیز وارد محاسبه می‌شود"}.`:"نمونهٔ برنامه بر اساس دادهٔ نمایشی است؛ پس از اتصال با سابقهٔ واقعی کانال جایگزین می‌شود.";
   root.innerHTML=plans.map((p,i)=>`<article class="plan-card"><span class="plan-number">${n(i+1)}</span><h3>${esc(p.name)}</h3><p>الگوی موفق نزدیک: ${esc(shortTitle(p.sample,58))}</p><div class="plan-meta"><span>${p.format==="short"?"شورتز":"ویدئوی بلند"}</span><span>${esc(p.length)}</span><span>${esc(p.day)}</span><span>${esc(p.time)}</span></div></article>`).join("")||`<div class="comment-empty">برای پیشنهاد زمان و طول، دادهٔ بیشتری لازم است.</div>`;
   const max=Math.max(1,...slots.map(s=>s.score));document.getElementById("slotGrid").innerHTML=slots.map((s,i)=>`<div class="slot-cell ${i===0?"best":""}"><span>${esc(s.weekday)} · حدود ${n(s.recommendedHour)}:۰۰</span><strong>${esc(s.bucket)} · ${n(s.count)} ویدئو</strong><i style="--strength:${Math.max(8,s.score/max*100)}%"></i></div>`).join("");
 }
@@ -293,6 +299,7 @@ function renderAdvisor(){
   const score=Math.min(96,Math.round(55+recs.reduce((a,r)=>a+r.score,0)/Math.max(1,recs.length)*.35));
   document.getElementById("opportunityScore").textContent=n(score);document.querySelector(".advisor-score")?.style.setProperty("--score",`${score}%`);
   document.getElementById("analyzedCount").textContent=n(videos.length);document.getElementById("analyzedRevenue").textContent=formatDollar(revenue);document.getElementById("analysisTime").textContent=state.analysisUpdatedAt?new Date(state.analysisUpdatedAt).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"}):"دادهٔ نمونه";
+  const coverage=document.getElementById("historyCoverage");if(coverage)coverage.textContent=state.publicHistory.length?`${n(state.publicHistory.length)} روز · تا ${new Date(state.historyUpdatedAt).toLocaleDateString("fa-IR")}`:"در انتظار اولین اجرا";
   root.innerHTML=recs.map(r=>`<article class="recommendation-card" style="--rec-color:${r.color}"><div class="recommendation-head"><div><span class="rec-icon">${r.icon}</span><div><h3>${esc(r.title)}</h3><p class="why">${esc(r.why)}</p></div></div><span class="priority">${r.priority}</span></div><p>${esc(r.body)}</p><div class="evidence-box">${r.evidence.map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("")}</div><div class="rec-action"><span>قدم پیشنهادی</span><strong>${esc(r.action.replace(/^اقدام:\s*/,""))}</strong></div></article>`).join("")||`<div class="panel">برای ساخت پیشنهاد، دادهٔ کافی از ویدئوها پیدا نشد.</div>`;
   const ranked=[...videos].sort((a,b)=>videoRPM(b)-videoRPM(a)).slice(0,10);
   document.getElementById("economicsTable").innerHTML=ranked.map(v=>`<tr><td title="${esc(v.title)}">${esc(shortTitle(v.title,42))}</td><td>${formatDollar(v.revenue)}</td><td>${formatDollar(videoRPM(v))}</td><td>${n(v.retention,"decimal")}٪</td><td>${n(subRate(v),"decimal")}</td></tr>`).join("")||`<tr><td colspan="5">هنوز داده‌ای نیست.</td></tr>`;
@@ -356,6 +363,7 @@ async function moderateComment(id,status){
 
 document.addEventListener("DOMContentLoaded",()=>{
   renderAll();
+  loadPublicHistory();
   loadFxRates();
   document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
   document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.go)));
