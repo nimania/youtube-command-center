@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260916-2" />
+    <link rel="stylesheet" href="styles.css?v=20260916-3" />
   </head>
   <body>
     <div class="noise"></div>
@@ -25,6 +25,7 @@
         <button class="nav-item" data-view="audience"><span>◎</span>مخاطبان</button>
         <button class="nav-item" data-view="revenue"><span>◈</span>درآمد و تسویه</button>
         <button class="nav-item" data-view="advisor"><span>✦</span>پیشنهادهای اختصاصی</button>
+        <button class="nav-item" data-view="comments"><span>◌</span>مدیریت کامنت‌ها</button>
         <button class="nav-item" data-view="reports"><span>↗</span>گزارش‌ها</button>
       </nav>
       <div class="sidebar-bottom">
@@ -158,6 +159,14 @@
             <button class="button ghost" id="refreshAdviceBtn">بازسازی پیشنهادها</button>
           </div>
           <div class="recommendation-list" id="recommendationList"></div>
+          <div class="publishing-planner">
+            <div class="planner-head">
+              <div><p class="eyebrow">برنامه‌ریز انتشار</p><h2>چه موضوعی را، چه روز و ساعتی، با چه طولی منتشر کنم؟</h2><p id="plannerMethod">الگو از زمان انتشار و عملکرد تاریخی ویدئوهای کانال ساخته می‌شود.</p></div>
+              <div class="best-slot" id="bestSlot"><span>بازهٔ پیشنهادی</span><strong>—</strong><small>در انتظار تحلیل</small></div>
+            </div>
+            <div class="publishing-plan" id="publishingPlan"></div>
+            <div class="slot-grid" id="slotGrid"></div>
+          </div>
           <div class="dashboard-grid">
             <article class="panel span-7">
               <div class="panel-head"><div><p class="eyebrow">اقتصاد محتوا</p><h2>ویدئوهای درآمدساز و کارآمد</h2></div><span class="pill">RPM تقریبی</span></div>
@@ -169,6 +178,25 @@
               <p class="fine-print">این بخش عنوان، توضیحات و تگ‌های ویدئوها را با عملکرد واقعی آن‌ها وزن‌دهی می‌کند؛ تحلیل متن کامل گفتار در مرحلهٔ بعد با رونویسی اضافه می‌شود.</p>
             </article>
           </div>
+        </section>
+
+        <section class="view" id="view-comments">
+          <div class="comments-head">
+            <div><p class="eyebrow">مرکز تعامل</p><h2>کامنت‌ها را بدون خروج از داشبورد مدیریت کن</h2><p>پاسخ بده، موارد در انتظار بررسی را تأیید کن یا کامنت نامناسب را مخفی کن.</p></div>
+            <button class="button primary" id="enableCommentsBtn">فعال‌کردن مدیریت کامنت‌ها</button>
+          </div>
+          <div class="comments-note" id="commentsPermissionNote"><span class="status-dot"></span><div><strong>مجوز مدیریت کامنت‌ها هنوز فعال نیست</strong><small>این دسترسی فقط هنگام استفاده درخواست می‌شود و در مخزن ذخیره نمی‌شود.</small></div></div>
+          <div class="comment-stats">
+            <article><span>نمایش‌داده‌شده</span><strong id="commentCount">—</strong></article>
+            <article><span>در انتظار بررسی</span><strong id="heldCount">—</strong></article>
+            <article><span>پرسش‌های شناسایی‌شده</span><strong id="questionCount">—</strong></article>
+          </div>
+          <div class="comment-toolbar">
+            <div class="comment-tabs" role="group" aria-label="وضعیت کامنت"><button class="active" data-comment-status="published">منتشرشده</button><button data-comment-status="heldForReview">در انتظار بررسی</button></div>
+            <label class="search-box"><span>⌕</span><input id="commentSearch" type="search" placeholder="جست‌وجو در نام یا متن کامنت"></label>
+            <button class="button ghost" id="refreshCommentsBtn">تازه‌سازی</button>
+          </div>
+          <div class="comment-list" id="commentList"></div>
         </section>
 
         <section class="view" id="view-reports">
@@ -188,9 +216,19 @@
         <small id="oauthMessage"></small>
       </form>
     </dialog>
+    <dialog id="replyDialog">
+      <form class="dialog-card" id="replyForm">
+        <button class="dialog-close" type="button" id="closeReplyDialog" aria-label="بستن">×</button>
+        <p class="eyebrow">پاسخ از طرف کانال</p><h2 id="replyToName">پاسخ به کامنت</h2>
+        <blockquote id="replyOriginal"></blockquote>
+        <input type="hidden" id="replyParentId">
+        <textarea id="replyText" rows="5" maxlength="10000" placeholder="پاسخ را بنویس…" required></textarea>
+        <div class="dialog-actions"><button class="button ghost" type="button" id="cancelReply">انصراف</button><button class="button primary" type="submit">ارسال پاسخ</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="config.js"></script>
-    <script src="app.js?v=20260916-2"></script>
+    <script src="app.js?v=20260916-3"></script>
   </body>
 </html>
