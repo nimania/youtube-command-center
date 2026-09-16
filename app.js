@@ -23,7 +23,8 @@ const state = {
   fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""},
   analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null,
   comments:buildDemoComments(),commentsPermission:false,commentStatus:"published",heldCount:1,
-  publicHistory:[],historyUpdatedAt:null
+  publicHistory:[],historyUpdatedAt:null,
+  range:null,comparisonMode:"previous",comparisonDaily:[],comparisonVideos:[],rangePreset:"28d"
 };
 
 function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views,publishedAt:`${v.date}T${String(15+(i%4)*2).padStart(2,"0")}:${i%2?"30":"00"}:00Z`}))}
@@ -52,6 +53,41 @@ function buildDemoRevenue(){
 }
 function localISO(d){const z=new Date(d.getTime()-d.getTimezoneOffset()*60000);return z.toISOString().slice(0,10)}
 
+function dateAtNoon(value){const d=value instanceof Date?new Date(value):new Date(`${value}T12:00:00`);d.setHours(12,0,0,0);return d}
+function inclusiveDays(start,end){return Math.max(1,Math.round((dateAtNoon(end)-dateAtNoon(start))/864e5)+1)}
+function shiftISO(value,days){const d=dateAtNoon(value);d.setDate(d.getDate()+days);return localISO(d)}
+function presetRange(key){
+  const now=dateAtNoon(new Date()),end=localISO(now);let start=end,label="بازهٔ دلخواه";
+  const rolling={"7d":[6,"۷ روز اخیر"],"28d":[27,"۲۸ روز اخیر"],"90d":[89,"۹۰ روز اخیر"],"180d":[179,"۶ ماه اخیر"],"365d":[364,"۳۶۵ روز اخیر"],"730d":[729,"۲ سال اخیر"]};
+  if(rolling[key]){start=shiftISO(end,-rolling[key][0]);label=rolling[key][1]}
+  else if(key==="today"){label="امروز"}
+  else if(key==="yesterday"){start=shiftISO(end,-1);return{start,end:start,label:"دیروز",key}}
+  else if(key==="thisWeek"){const offset=(now.getDay()+1)%7;start=shiftISO(end,-offset);label="هفتهٔ جاری"}
+  else if(key==="lastWeek"){const offset=(now.getDay()+1)%7,e=shiftISO(end,-offset-1);return{start:shiftISO(e,-6),end:e,label:"هفتهٔ قبل",key}}
+  else if(key==="thisMonth"){start=localISO(new Date(now.getFullYear(),now.getMonth(),1));label="ماه جاری"}
+  else if(key==="lastMonth"){start=localISO(new Date(now.getFullYear(),now.getMonth()-1,1));const e=new Date(now.getFullYear(),now.getMonth(),0);return{start,end:localISO(e),label:"ماه قبل",key}}
+  else if(key==="thisQuarter"){const q=Math.floor(now.getMonth()/3)*3;start=localISO(new Date(now.getFullYear(),q,1));label="فصل جاری"}
+  else if(key==="lastQuarter"){const q=Math.floor(now.getMonth()/3)*3-3,s=new Date(now.getFullYear(),q,1),e=new Date(s.getFullYear(),s.getMonth()+3,0);return{start:localISO(s),end:localISO(e),label:"فصل قبل",key}}
+  else if(key==="thisYear"){start=localISO(new Date(now.getFullYear(),0,1));label="سال جاری"}
+  else if(key==="lastYear"){return{start:`${now.getFullYear()-1}-01-01`,end:`${now.getFullYear()-1}-12-31`,label:"سال قبل",key}}
+  else if(key==="allTime"){start=(state.channelItem?.snippet?.publishedAt||"2005-01-01").slice(0,10);label="از آغاز کانال"}
+  return{start,end,label,key};
+}
+function comparisonRange(range,mode=state.comparisonMode){
+  if(mode==="none")return null;
+  if(mode==="year"){const s=dateAtNoon(range.start),e=dateAtNoon(range.end);s.setFullYear(s.getFullYear()-1);e.setFullYear(e.getFullYear()-1);return{start:localISO(s),end:localISO(e),label:"همین بازه در سال قبل"}}
+  const days=inclusiveDays(range.start,range.end),end=shiftISO(range.start,-1),start=shiftISO(end,-days+1);return{start,end,label:"دورهٔ قبل با طول برابر"};
+}
+function faDate(value,options={year:"numeric",month:"short",day:"numeric"}){return dateAtNoon(value).toLocaleDateString("fa-IR",options)}
+function rangeText(range=state.range){return range?`${range.label} · ${faDate(range.start)} تا ${faDate(range.end)}`:"۲۸ روز اخیر"}
+function comparisonText(){const c=comparisonRange(state.range);return c?c.label:"بدون مقایسه"}
+function percentChange(current,previous){if(!previous)return current?100:0;return (current-previous)/Math.abs(previous)*100}
+function buildDemoRange(range){const days=Math.min(inclusiveDays(range.start,range.end),1200),base=buildDaily(days);return base.map((row,i)=>({...row,date:shiftISO(range.start,i)}))}
+
+state.range=presetRange("28d");
+state.comparisonDaily=buildDemoRange(comparisonRange(state.range)).map(x=>({...x,views:Math.round(x.views*.88),watch:Math.round(x.watch*.9),subs:Math.round(x.subs*.91)}));
+state.comparisonVideos=demoVideos.map(v=>({...v,retention:v.retention-2}));
+
 function n(value,type="number"){
   if(type==="compact") return compact.format(value);
   if(type==="decimal") return fa.format(value);
@@ -66,16 +102,20 @@ function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos
 
 function renderKPIs(){
   const views=sum(state.daily,"views"),watch=sum(state.daily,"watch"),subs=sum(state.daily,"subs"),ret=avg(state.videos,"retention");
+  const previous={views:sum(state.comparisonDaily,"views"),watch:sum(state.comparisonDaily,"watch"),subs:sum(state.comparisonDaily,"subs"),retention:avg(state.comparisonVideos,"retention")};
+  const delta=(current,old)=>{if(state.comparisonMode==="none")return{label:"مقایسه غیرفعال",down:false};const value=percentChange(current,old);return{label:`${n(Math.abs(value),"decimal")}٪ ${value>=0?"بیشتر":"کمتر"}`,down:value<0}};
+  const changes=[delta(views,previous.views),delta(watch,previous.watch),delta(subs,previous.subs),delta(ret,previous.retention)];
   const cards=[
-    {label:"بازدید",value:n(views,"compact"),delta:"۱۸٫۶٪ بیشتر",icon:"◉",accent:"#6d8cff"},
-    {label:"زمان تماشا",value:`${n(watch,"compact")} ساعت`,delta:"۲۳٫۱٪ بیشتر",icon:"◷",accent:"#a779ff"},
-    {label:"مشترک خالص",value:`+${n(subs)}`,delta:"۹٫۴٪ بیشتر",icon:"＋",accent:"#38d39f"},
-    {label:"میانگین مشاهده",value:`${n(ret,"decimal")}٪`,delta:"۲٫۷٪ کمتر",icon:"⌁",accent:"#ff4e61",down:true}
+    {label:"بازدید",value:n(views,"compact"),delta:changes[0].label,icon:"◉",accent:"#6d8cff",down:changes[0].down},
+    {label:"زمان تماشا",value:`${n(watch,"compact")} ساعت`,delta:changes[1].label,icon:"◷",accent:"#a779ff",down:changes[1].down},
+    {label:"مشترک خالص",value:`+${n(subs)}`,delta:changes[2].label,icon:"＋",accent:"#38d39f",down:changes[2].down},
+    {label:"میانگین مشاهده",value:`${n(ret,"decimal")}٪`,delta:changes[3].label,icon:"⌁",accent:"#ff4e61",down:changes[3].down}
   ];
-  document.getElementById("kpiGrid").innerHTML=cards.map(c=>`<article class="kpi-card" style="--accent:${c.accent};--glow:${c.accent}"><div class="kpi-top"><span>${c.label}</span><i class="kpi-icon">${c.icon}</i></div><div class="kpi-value">${c.value}</div><div class="delta ${c.down?"down":""}">${c.down?"↓":"↑"} ${c.delta} نسبت به دورهٔ قبل</div></article>`).join("");
+  document.getElementById("kpiGrid").innerHTML=cards.map(c=>`<article class="kpi-card" style="--accent:${c.accent};--glow:${c.accent}"><div class="kpi-top"><span>${c.label}</span><i class="kpi-icon">${c.icon}</i></div><div class="kpi-value">${c.value}</div><div class="delta ${c.down?"down":""}">${state.comparisonMode==="none"?"—":c.down?"↓":"↑"} ${c.delta}${state.comparisonMode==="none"?"":` نسبت به ${comparisonText()}`}</div></article>`).join("");
 }
 
 function lineSVG(data,second=true){
+  if(!data.length)return`<div class="comment-empty">در این بازه داده‌ای گزارش نشده است.</div>`;
   const w=800,h=235,pad={x:20,y:18,b:26};const max=Math.max(1,...data.map(d=>d.views))*1.08;const maxW=Math.max(1,...data.map(d=>d.watch))*1.08;
   const point=(v,i,m)=>[pad.x+i*((w-pad.x*2)/(data.length-1||1)),h-pad.b-(v/m)*(h-pad.y-pad.b)];
   const pts=data.map((d,i)=>point(d.views,i,max));const wpts=data.map((d,i)=>point(d.watch,i,maxW));
@@ -87,7 +127,7 @@ function lineSVG(data,second=true){
 }
 function renderTrend(){
   document.getElementById("trendChart").innerHTML=lineSVG(state.daily);
-  const best=state.daily.reduce((a,b)=>a.views>b.views?a:b);document.getElementById("trendSummary").innerHTML=`<div><span>بهترین روز</span><strong>${new Date(best.date).toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</strong></div><div><span>میانگین روزانه</span><strong>${n(avg(state.daily,"views"),"compact")} بازدید</strong></div><div><span>روند کلی</span><strong style="color:var(--green)">صعودی +۱۸٫۶٪</strong></div>`;
+  if(!state.daily.length){document.getElementById("trendSummary").innerHTML="";return}const best=state.daily.reduce((a,b)=>a.views>b.views?a:b),change=percentChange(sum(state.daily,"views"),sum(state.comparisonDaily,"views"));document.getElementById("trendSummary").innerHTML=`<div><span>بهترین روز</span><strong>${new Date(best.date).toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"})}</strong></div><div><span>میانگین روزانه</span><strong>${n(avg(state.daily,"views"),"compact")} بازدید</strong></div><div><span>مقایسهٔ دوره</span><strong style="color:var(--${change>=0?"green":"red"})">${state.comparisonMode==="none"?"غیرفعال":`${change>=0?"+":"−"}${n(Math.abs(change),"decimal")}٪`}</strong></div>`;
 }
 function renderInsights(){
   const long=state.videos.filter(v=>v.format==="long"),short=state.videos.filter(v=>v.format==="short");
@@ -151,7 +191,8 @@ function revenuePeriods(){
     {label:"دیروز",sub:yesterday,value:dateRevenue(yesterday),pending:true},
     {label:"۷ روز اخیر",sub:`${weekStart} تا امروز`,value:rangeRevenue(weekStart,today)},
     {label:"ماه جاری تاکنون",sub:new Date(monthStart).toLocaleDateString("fa-IR",{month:"long",year:"numeric"}),value:rangeRevenue(monthStart,today),featured:true},
-    {label:"ماه میلادی قبل",sub:new Date(prevStart).toLocaleDateString("fa-IR",{month:"long",year:"numeric"}),value:rangeRevenue(prevStart,prevEnd)}
+    {label:"ماه میلادی قبل",sub:new Date(prevStart).toLocaleDateString("fa-IR",{month:"long",year:"numeric"}),value:rangeRevenue(prevStart,prevEnd)},
+    {label:`بازهٔ انتخابی: ${state.range?.label||"۲۸ روز"}`,sub:state.range?`${faDate(state.range.start)} تا ${faDate(state.range.end)}`:"",value:state.range?rangeRevenue(state.range.start,state.range.end):0,featured:true}
   ];
 }
 function foreignValue(usd){return state.revenueCurrency==="TRY"?usd*(state.fx.usdToTry||1):usd}
@@ -165,19 +206,26 @@ function renderRevenue(){
   const status=document.getElementById("revenueStatus"),latest=state.revenue.filter(x=>x.revenue>0).at(-1)?.date;
   if(state.revenueMode==="live") status.innerHTML=`<span class="status-dot" style="background:var(--green)"></span><div><strong>درآمد واقعی YouTube Analytics متصل است</strong><small>آخرین روز دارای داده: ${latest?new Date(latest).toLocaleDateString("fa-IR"):"هنوز گزارشی نیامده"} · نرخ تبدیل: ${state.fx.source||"نامشخص"}</small></div>`;
   else status.innerHTML=`<span class="status-dot"></span><div><strong>درآمد فعلاً نمایشی است</strong><small>برای دریافت درآمد واقعی، مجوز مالی YouTube Analytics را اضافه و دوباره متصل شو. نرخ تبدیل: ${state.fx.source||"در انتظار نرخ"}</small></div>`;
-  const chartRows=state.revenue.slice(-31).map(r=>({date:r.date,views:r.revenue,watch:r.revenue*(1-state.taxRate/100)}));document.getElementById("revenueChart").innerHTML=lineSVG(chartRows,true);
+  const selected=state.range?state.revenue.filter(r=>r.date>=state.range.start&&r.date<=state.range.end):state.revenue.slice(-31),chartRows=selected.map(r=>({date:r.date,views:r.revenue,watch:r.revenue*(1-state.taxRate/100)}));document.getElementById("revenueChart").innerHTML=lineSVG(chartRows,true);
   const rate=state.fx.usdToRial||0,month=periods[3],monthNet=netRial(month.value),labels=rialLabels(monthNet);
   document.getElementById("revenueFormula").innerHTML=`<div class="formula-step"><i>۱</i><div><span>درآمد گزارش‌شدهٔ ماه</span><strong>${foreignLabel(foreignValue(month.value))}</strong></div></div><div class="formula-step"><i>۲</i><div><span>پس از کسر مفروض ${n(state.taxRate)}٪</span><strong>${foreignLabel(foreignValue(month.value*(1-state.taxRate/100)))}</strong></div></div><div class="formula-step"><i>۳</i><div><span>نرخ دلار امروز</span><strong>${rate?`${n(rate/10)} تومان · ${n(rate)} ریال`:"وارد نشده"}</strong></div></div><div class="formula-step"><i>۴</i><div><span>برآورد خالص ماه جاری</span><strong>${rate?`${labels.toman} (${labels.rial})`:"—"}</strong></div></div>`;
 }
 async function loadRevenueData(token){
   try{
-    const now=new Date(),start=new Date(now.getFullYear(),now.getMonth()-1,1),dates=`startDate=${localISO(start)}&endDate=${localISO(now)}`;
-    const report=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=estimatedRevenue&currency=USD&sort=day`,token);
-    state.revenue=(report.rows||[]).map(r=>({date:r[0],revenue:Number(r[1])||0}));state.revenueMode="live";renderRevenue();
+    const now=new Date(),monthStart=localISO(new Date(now.getFullYear(),now.getMonth()-1,1)),compare=comparisonRange(state.range),start=[monthStart,state.range?.start,compare?.start].filter(Boolean).sort()[0],dates=`startDate=${start}&endDate=${localISO(now)}`;
+    const rows=await analyticsPages(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=estimatedRevenue&currency=USD&sort=day`,token);
+    state.revenue=rows.map(r=>({date:r[0],revenue:Number(r[1])||0}));state.revenueMode="live";renderRevenue();
   }catch(e){console.warn("Revenue permission unavailable",e);state.revenueMode="demo";renderRevenue();showToast("برای درآمد واقعی، مجوز مالی Analytics را اضافه کن")}
 }
 
-function renderReport(){const top=[...state.videos].sort((a,b)=>b.score-a.score)[0],weak=[...state.videos].sort((a,b)=>a.retention-b.retention)[0],views=sum(state.daily,"views");document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>بازدید در ${n(state.days)} روز؛ روند کلی مثبت است و سرعت رشد در هفتهٔ اخیر افزایش یافته.</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top.title)}</strong></p><p>امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب مناسبی از کلیک، ماندگاری و جذب مشترک.</p></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>انتشار منظم جان کلام را حفظ کن؛ این مجموعه هم بازدید و هم مشترک می‌سازد.</li><li>برای ویدئوهای بلند، هوک را سریع‌تر وارد مسئله کن. «${esc(weak.title)}» کمترین ماندگاری این دوره را داشته است.</li><li>از موضوع‌های موفق بلند، یک شورتز مستقل بساز و در ۲۴ ساعت بعد منتشر کن.</li></ul></article><article class="report-card"><h3>هدف پیشنهادی</h3><p>افزایش میانگین ماندگاری ویدئوهای بلند به <strong>۵۵٪</strong> و تثبیت حداقل دو انتشار در هفته.</p></article><article class="report-card"><h3>آزمایش بعدی</h3><p>دو تیتر با ساختار «پرسش مستقیم» و «ادعای روشن» را روی موضوع‌های مشابه مقایسه کن.</p></article>`}
+function periodBreakdown(){
+  const map=new Map();state.daily.forEach(row=>{const d=dateAtNoon(row.date),key=inclusiveDays(state.range.start,state.range.end)>370?`${d.getFullYear()}-Q${Math.floor(d.getMonth()/3)+1}`:row.date.slice(0,7);const item=map.get(key)||{key,views:0,watch:0,subs:0};item.views+=Number(row.views)||0;item.watch+=Number(row.watch)||0;item.subs+=Number(row.subs)||0;map.set(key,item)});return[...map.values()].slice(-12);
+}
+function renderReport(){
+  const top=[...state.videos].sort((a,b)=>b.score-a.score)[0],weak=[...state.videos].sort((a,b)=>a.retention-b.retention)[0],views=sum(state.daily,"views"),previous=sum(state.comparisonDaily,"views"),change=percentChange(views,previous),breakdown=periodBreakdown();
+  const rows=breakdown.map(x=>`<tr><td>${esc(x.key)}</td><td>${n(x.views)}</td><td>${n(x.watch)} ساعت</td><td>+${n(x.subs)}</td></tr>`).join("");
+  document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>${rangeText()} · ${n(state.days)} روز داده</p></article><article class="report-card"><h3>مقایسهٔ دوره</h3><div class="report-number" style="color:var(--${change>=0?"green":"red"})">${state.comparisonMode==="none"?"—":`${change>=0?"+":"−"}${n(Math.abs(change),"decimal")}٪`}</div><p>${comparisonText()}${state.comparisonMode==="none"?"":` · ${n(previous,"compact")} بازدید`}</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top?.title||"داده‌ای نیست")}</strong></p><p>${top?`امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب بازدید، ماندگاری و جذب مشترک.`:"در این بازه ویدئویی گزارش نشده است."}</p></article><article class="report-card"><h3>ضعیف‌ترین ماندگاری</h3><p><strong>${esc(weak?.title||"داده‌ای نیست")}</strong></p><p>${weak?`${n(weak.retention,"decimal")}٪ میانگین مشاهده؛ شروع و ساختار این ویدئو ارزش بازبینی دارد.`:"—"}</p></article><article class="report-card wide"><h3>روند ${inclusiveDays(state.range.start,state.range.end)>370?"فصلی":"ماهانه"}</h3><div class="table-wrap"><table><thead><tr><th>دوره</th><th>بازدید</th><th>زمان تماشا</th><th>مشترک</th></tr></thead><tbody>${rows||`<tr><td colspan="4">داده‌ای نیست.</td></tr>`}</tbody></table></div></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>قالب و مجموعهٔ ویدئوی برنده را در برنامهٔ بعدی تکرار کن، اما زاویه و تیتر تازه بساز.</li><li>${weak?`هوک ویدئوی «${esc(shortTitle(weak.title,60))}» را کوتاه‌تر و مستقیم‌تر آزمایش کن.`:"پس از جمع‌شدن داده، ضعیف‌ترین ماندگاری بررسی می‌شود."}</li><li>نتیجهٔ این بازه را با «دورهٔ قبل» و سپس «همین بازه در سال قبل» مقایسه کن تا اثر فصل از رشد واقعی جدا شود.</li></ul></article>`;
+}
 
 function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",comments:"گفت‌وگو با مخاطب، در یک صندوق واحد.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
 
@@ -196,14 +244,22 @@ async function requestCommentPermission(){
   const client=google.accounts.oauth2.initTokenClient({client_id:cfg.googleClientId,scope:scopes,include_granted_scopes:true,callback:async response=>{if(response.error){showToast("مجوز مدیریت کامنت‌ها صادر نشد");return}state.accessToken=response.access_token;state.commentsPermission=true;if(!state.channelItem)await loadLiveData(response.access_token);await loadComments("published");renderComments();showToast("مدیریت کامنت‌ها فعال شد")}});client.requestAccessToken({prompt:"consent"});
 }
 async function loadLiveData(token){
-  try{showToast("در حال دریافت آمار واقعی کانال…");const channel=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",token);const item=channel.items?.[0];if(!item)throw new Error("کانالی برای این حساب پیدا نشد");state.channelItem=item;const end=new Date(),start=new Date();start.setDate(end.getDate()-state.days);const dates=`startDate=${start.toISOString().slice(0,10)}&endDate=${end.toISOString().slice(0,10)}`;
-    const daily=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=views,estimatedMinutesWatched,subscribersGained&sort=day`,token);
-    state.daily=(daily.rows||[]).map(r=>({date:r[0],views:r[1],watch:Math.round(r[2]/60),subs:r[3]}));
-    const vr=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=video&metrics=views,estimatedMinutesWatched,averageViewPercentage,subscribersGained,likes,comments&sort=-views&maxResults=200`,token);
-    const ids=(vr.rows||[]).map(r=>r[0]);let meta={};for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
-    state.videos=(vr.rows||[]).map((r,i)=>{const m=meta[r[0]],title=m?.snippet?.title||r[0],duration=parseDuration(m?.contentDetails?.duration||"");const format=duration<=70?"short":"long";return{id:r[0],title,date:m?.snippet?.publishedAt?.slice(0,10)||"",format,series:detectSeries(title,format),views:r[1],watch:Math.round(r[2]/60),retention:r[3],subs:r[4],likes:r[5],comments:r[6],velocity:Math.round(r[1]*.42),score:scoreVideo(r[1],r[3],r[4]),thumb:m?.snippet?.thumbnails?.medium?.url}});
+  try{showToast("در حال دریافت آمار واقعی کانال…");const channel=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",token);const item=channel.items?.[0];if(!item)throw new Error("کانالی برای این حساب پیدا نشد");state.channelItem=item;
+    await loadAnalyticsRange(token);
     state.mode="live";document.getElementById("channelName").textContent=item.snippet.title;document.getElementById("channelAvatar").style.backgroundImage=`url('${item.snippet.thumbnails?.default?.url}')`;document.getElementById("channelAvatar").textContent="";document.getElementById("syncState").textContent="متصل به یوتیوب";document.getElementById("syncTime").textContent="همین حالا به‌روزرسانی شد";document.querySelector(".status-dot").style.background="var(--green)";renderAll();await loadRevenueData(token);await loadRecommendationDataset(token,item);showToast("آمار و پیشنهادهای اختصاصی به‌روز شد");
   }catch(e){console.error(e);showToast("دریافت آمار کامل نشد؛ تنظیمات API را بررسی کن")}
+}
+async function loadAnalyticsRange(token){
+  const range=state.range||presetRange("28d"),comparison=comparisonRange(range),dates=r=>`startDate=${r.start}&endDate=${r.end}`;
+  const dailyUrl=r=>`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates(r)}&dimensions=day&metrics=views,estimatedMinutesWatched,subscribersGained&sort=day`;
+  const videoUrl=r=>`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates(r)}&dimensions=video&metrics=views,estimatedMinutesWatched,averageViewPercentage,subscribersGained,likes,comments&sort=-views`;
+  const [daily,vr,previousDaily,previousVideos]=await Promise.all([analyticsPages(dailyUrl(range),token),analyticsPages(videoUrl(range),token),comparison?analyticsPages(dailyUrl(comparison),token):Promise.resolve([]),comparison?analyticsPages(videoUrl(comparison),token):Promise.resolve([])]);
+  state.daily=daily.map(r=>({date:r[0],views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),subs:Number(r[3])||0}));
+  state.comparisonDaily=previousDaily.map(r=>({date:r[0],views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),subs:Number(r[3])||0}));
+  state.comparisonVideos=previousVideos.map(r=>({views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),retention:Number(r[3])||0,subs:Number(r[4])||0}));
+  const ids=vr.map(r=>r[0]),meta={};for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
+  const maxViews=Math.max(1,...vr.map(r=>Number(r[1])||0));state.videos=vr.map(r=>{const m=meta[r[0]],title=m?.snippet?.title||r[0],duration=parseDuration(m?.contentDetails?.duration||""),format=duration<=70?"short":"long",views=Number(r[1])||0,retention=Number(r[3])||0,subs=Number(r[4])||0;return{id:r[0],title,date:m?.snippet?.publishedAt?.slice(0,10)||"",format,series:detectSeries(title,format),views,watch:Math.round((Number(r[2])||0)/60),retention,subs,likes:Number(r[5])||0,comments:Number(r[6])||0,velocity:Math.round(views*.42),score:Math.min(99,Math.round((views/maxViews)*38+(retention/100)*42+Math.min(subs/250,1)*20)),thumb:m?.snippet?.thumbnails?.medium?.url}});
+  state.days=inclusiveDays(range.start,range.end);updateRangeUI();
 }
 function parseDuration(s){const m=s.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);return m?Number(m[1]||0)*3600+Number(m[2]||0)*60+Number(m[3]||0):0}
 function detectSeries(title,format){if(/جان کلام/.test(title))return format==="short"?"جان کلام کوتاه":"جان کلام";if(/رستوران|کافه|منو|غذا/.test(title))return"صنعت غذا";if(/زندگی/.test(title))return"زندگی‌های نزیسته";return"خبر و تحلیل"}
@@ -361,13 +417,34 @@ async function moderateComment(id,status){
   if(!state.commentsPermission)return requestCommentPermission();const target=state.comments.find(c=>c.id===id),url=`https://www.googleapis.com/youtube/v3/comments/setModerationStatus?id=${encodeURIComponent(id)}&moderationStatus=${encodeURIComponent(status)}`;await apiRequest(url,state.accessToken,{method:"POST"});if(target?.status==="heldForReview")state.heldCount=Math.max(0,state.heldCount-1);state.comments=state.comments.filter(c=>c.id!==id);renderComments();showToast(status==="published"?"کامنت منتشر شد":"کامنت مخفی شد")
 }
 
+function updateRangePreview(){
+  const start=document.getElementById("rangeStart")?.value,end=document.getElementById("rangeEnd")?.value,preview=document.getElementById("rangePreview");if(!preview||!start||!end)return;
+  if(start>end){preview.textContent="تاریخ شروع باید پیش از تاریخ پایان باشد.";return}const range={start,end},mode=document.getElementById("comparisonMode")?.value||"previous",compare=comparisonRange(range,mode);preview.innerHTML=`<strong>${n(inclusiveDays(start,end))} روز</strong> · ${faDate(start)} تا ${faDate(end)}${compare?`<br>مقایسه با ${faDate(compare.start)} تا ${faDate(compare.end)} (${compare.label})`:" · بدون مقایسه"}`;
+}
+function fillRangeDialog(){
+  document.getElementById("rangeStart").value=state.range.start;document.getElementById("rangeEnd").value=state.range.end;document.getElementById("comparisonMode").value=state.comparisonMode;document.querySelectorAll("[data-dialog-preset]").forEach(b=>b.classList.toggle("active",b.dataset.dialogPreset===state.rangePreset));updateRangePreview();
+}
+function updateRangeUI(){
+  const quick=["7d","28d","90d"];document.querySelectorAll("[data-range-preset]").forEach(b=>b.classList.toggle("active",b.dataset.rangePreset===state.rangePreset));const more=document.getElementById("openRangeDialog"),label=document.getElementById("activeRangeLabel");if(more&&label){const advanced=!quick.includes(state.rangePreset);more.classList.toggle("has-custom",advanced);label.textContent=advanced?state.range.label:"بازه‌های بیشتر"}document.getElementById("pageSubtitle").textContent=`عملکرد ${rangeText()} · مقایسه با ${comparisonText()}`;
+}
+async function applyReportingRange(range,preset=range.key||"custom",comparisonMode=state.comparisonMode){
+  if(!range.start||!range.end||range.start>range.end){showToast("بازهٔ زمانی معتبر نیست");return}if(range.end>localISO(new Date())){showToast("تاریخ پایان نمی‌تواند در آینده باشد");return}
+  state.range={...range,key:preset,label:range.label||"بازهٔ دلخواه"};state.rangePreset=preset;state.comparisonMode=comparisonMode;state.days=inclusiveDays(range.start,range.end);document.body.classList.add("range-loading");updateRangeUI();
+  try{if(state.mode==="live"&&state.accessToken){await loadAnalyticsRange(state.accessToken);await loadRevenueData(state.accessToken);renderAll()}else{state.daily=buildDemoRange(state.range);const compare=comparisonRange(state.range);state.comparisonDaily=compare?buildDemoRange(compare).map(x=>({...x,views:Math.round(x.views*.88),watch:Math.round(x.watch*.9),subs:Math.round(x.subs*.91)})):[];state.comparisonVideos=state.comparisonMode==="none"?[]:demoVideos.map(v=>({...v,retention:v.retention-2}));state.videos=[...demoVideos];renderAll()}showToast(`گزارش ${state.range.label} آماده شد`)}catch(e){console.error("Range update failed",e);showToast("دریافت این بازه کامل نشد؛ دوباره امتحان کن")}finally{document.body.classList.remove("range-loading")}
+}
+
 document.addEventListener("DOMContentLoaded",()=>{
   renderAll();
   loadPublicHistory();
   loadFxRates();
   document.querySelectorAll(".nav-item[data-view]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.view)));
   document.querySelectorAll("[data-go]").forEach(b=>b.addEventListener("click",()=>switchView(b.dataset.go)));
-  document.querySelectorAll(".date-range button").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".date-range button").forEach(x=>x.classList.remove("active"));b.classList.add("active");state.days=Number(b.dataset.days);if(state.mode==="demo")state.daily=buildDaily(state.days);document.getElementById("pageSubtitle").textContent=`عملکرد ${b.textContent} اخیر در مقایسه با دورهٔ پیش`;renderAll()}));
+  updateRangeUI();
+  document.querySelectorAll("[data-range-preset]").forEach(b=>b.addEventListener("click",()=>applyReportingRange(presetRange(b.dataset.rangePreset),b.dataset.rangePreset,state.comparisonMode)));
+  const rangeDialog=document.getElementById("rangeDialog"),closeRange=()=>rangeDialog.close();document.getElementById("openRangeDialog")?.addEventListener("click",()=>{fillRangeDialog();rangeDialog.showModal()});document.getElementById("closeRangeDialog")?.addEventListener("click",closeRange);document.getElementById("cancelRangeDialog")?.addEventListener("click",closeRange);
+  document.querySelectorAll("[data-dialog-preset]").forEach(b=>b.addEventListener("click",()=>{const key=b.dataset.dialogPreset;document.querySelectorAll("[data-dialog-preset]").forEach(x=>x.classList.toggle("active",x===b));state.pendingRangePreset=key;if(key!=="custom"){const r=presetRange(key);document.getElementById("rangeStart").value=r.start;document.getElementById("rangeEnd").value=r.end}updateRangePreview()}));
+  ["rangeStart","rangeEnd","comparisonMode"].forEach(id=>document.getElementById(id)?.addEventListener("change",()=>{if(id!=="comparisonMode"){state.pendingRangePreset="custom";document.querySelectorAll("[data-dialog-preset]").forEach(x=>x.classList.toggle("active",x.dataset.dialogPreset==="custom"))}updateRangePreview()}));
+  document.getElementById("rangeForm")?.addEventListener("submit",async e=>{e.preventDefault();const start=document.getElementById("rangeStart").value,end=document.getElementById("rangeEnd").value,mode=document.getElementById("comparisonMode").value,preset=state.pendingRangePreset||state.rangePreset,label=preset==="custom"?"بازهٔ دلخواه":presetRange(preset).label;if(start>end){showToast("تاریخ شروع باید قبل از پایان باشد");return}closeRange();await applyReportingRange({start,end,label,key:preset},preset,mode);state.pendingRangePreset=null});
   ["videoSearch","formatFilter","sortFilter"].forEach(id=>document.getElementById(id)?.addEventListener(id==="videoSearch"?"input":"change",renderVideoTable));
   document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
   const dialog=document.getElementById("connectionDialog");["connectBtn","settingsBtn"].forEach(id=>document.getElementById(id).addEventListener("click",()=>dialog.showModal()));
