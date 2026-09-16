@@ -24,7 +24,8 @@ const state = {
   analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null,
   comments:buildDemoComments(),commentsPermission:false,commentStatus:"published",heldCount:1,
   publicHistory:[],historyUpdatedAt:null,
-  range:null,comparisonMode:"previous",comparisonDaily:[],comparisonVideos:[],rangePreset:"28d"
+  range:null,comparisonMode:"previous",comparisonDaily:[],comparisonVideos:[],rangePreset:"28d",
+  coachGoals:{views:500000,revenue:300,uploads:8,retention:55},coachChecks:{},coachExtraTasks:[]
 };
 
 function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views,publishedAt:`${v.date}T${String(15+(i%4)*2).padStart(2,"0")}:${i%2?"30":"00"}:00Z`}))}
@@ -98,7 +99,7 @@ function sum(items,key){return items.reduce((a,x)=>a+(Number(x[key])||0),0)}
 function avg(items,key){return items.length?sum(items,key)/items.length:0}
 function showToast(message){const el=document.getElementById("toast");el.textContent=message;el.classList.add("show");clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove("show"),2800)}
 
-function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderAdvisor();renderComments();renderReport();}
+function renderAll(){renderCoach();renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderAdvisor();renderComments();renderReport();}
 
 function renderKPIs(){
   const views=sum(state.daily,"views"),watch=sum(state.daily,"watch"),subs=sum(state.daily,"subs"),ret=avg(state.videos,"retention");
@@ -227,7 +228,60 @@ function renderReport(){
   document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>${rangeText()} · ${n(state.days)} روز داده</p></article><article class="report-card"><h3>مقایسهٔ دوره</h3><div class="report-number" style="color:var(--${change>=0?"green":"red"})">${state.comparisonMode==="none"?"—":`${change>=0?"+":"−"}${n(Math.abs(change),"decimal")}٪`}</div><p>${comparisonText()}${state.comparisonMode==="none"?"":` · ${n(previous,"compact")} بازدید`}</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top?.title||"داده‌ای نیست")}</strong></p><p>${top?`امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب بازدید، ماندگاری و جذب مشترک.`:"در این بازه ویدئویی گزارش نشده است."}</p></article><article class="report-card"><h3>ضعیف‌ترین ماندگاری</h3><p><strong>${esc(weak?.title||"داده‌ای نیست")}</strong></p><p>${weak?`${n(weak.retention,"decimal")}٪ میانگین مشاهده؛ شروع و ساختار این ویدئو ارزش بازبینی دارد.`:"—"}</p></article><article class="report-card wide"><h3>روند ${inclusiveDays(state.range.start,state.range.end)>370?"فصلی":"ماهانه"}</h3><div class="table-wrap"><table><thead><tr><th>دوره</th><th>بازدید</th><th>زمان تماشا</th><th>مشترک</th></tr></thead><tbody>${rows||`<tr><td colspan="4">داده‌ای نیست.</td></tr>`}</tbody></table></div></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>قالب و مجموعهٔ ویدئوی برنده را در برنامهٔ بعدی تکرار کن، اما زاویه و تیتر تازه بساز.</li><li>${weak?`هوک ویدئوی «${esc(shortTitle(weak.title,60))}» را کوتاه‌تر و مستقیم‌تر آزمایش کن.`:"پس از جمع‌شدن داده، ضعیف‌ترین ماندگاری بررسی می‌شود."}</li><li>نتیجهٔ این بازه را با «دورهٔ قبل» و سپس «همین بازه در سال قبل» مقایسه کن تا اثر فصل از رشد واقعی جدا شود.</li></ul></article>`;
 }
 
-function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",comments:"گفت‌وگو با مخاطب، در یک صندوق واحد.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
+function loadCoachState(){try{const saved=JSON.parse(localStorage.getItem("nimaYoutubeCoach")||"{}");if(saved.goals)state.coachGoals={...state.coachGoals,...saved.goals};if(saved.checks)state.coachChecks=saved.checks;if(Array.isArray(saved.extraTasks))state.coachExtraTasks=saved.extraTasks}catch(e){console.warn("Coach state unavailable",e)}}
+function saveCoachState(){try{localStorage.setItem("nimaYoutubeCoach",JSON.stringify({goals:state.coachGoals,checks:state.coachChecks,extraTasks:state.coachExtraTasks.slice(-20)}))}catch(e){console.warn("Coach state unavailable",e)}}
+function currentMonthKey(){return localISO(new Date()).slice(0,7)}
+function coachMetrics(){
+  const now=new Date(),daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),elapsed=now.getDate(),dailyViews=avg(state.daily,"views"),projectedViews=Math.round(dailyViews*daysInMonth),monthStart=`${currentMonthKey()}-01`,monthRevenue=rangeRevenue(monthStart,localISO(now)),projectedRevenue=monthRevenue/Math.max(1,elapsed)*daysInMonth;
+  const source=(state.analysisVideos||[]).length?state.analysisVideos:state.videos,uploads=source.filter(v=>(v.date||v.publishedAt||"").slice(0,7)===currentMonthKey()).length,retention=avg(state.videos,"retention");
+  return{projectedViews,monthRevenue,projectedRevenue,uploads,retention,elapsed,daysInMonth};
+}
+function coachTask(id,title,detail,time){return{id,title,detail,time,done:!!state.coachChecks[id]}}
+function coachTodayActions(){
+  const key=localISO(new Date()),recs=buildRecommendations(),first=recs[0],latest=[...(state.analysisVideos||[])].sort((a,b)=>new Date(b.publishedAt||b.date)-new Date(a.publishedAt||a.date))[0],actions=[];
+  actions.push(coachTask(`${key}-focus`,first?.title||"موضوع بعدی را از میان برنده‌ها انتخاب کن",first?.action?.replace(/^اقدام:\s*/,"")||"سه ویدئوی موفق را کنار هم بگذار و وجه مشترکشان را یادداشت کن.","۳۰ دقیقه"));
+  actions.push(coachTask(`${key}-audience`,"صدای مخاطب را وارد برنامه کن","کامنت‌های پرسشی را مرور کن و دو سؤال پرتکرار را به فهرست موضوع‌ها اضافه کن.","۲۰ دقیقه"));
+  actions.push(coachTask(`${key}-review`,latest?`یک تصمیم دربارهٔ «${shortTitle(latest.title,48)}» بگیر`:"آخرین انتشار را ارزیابی کن",latest?"با توجه به ماندگاری و سرعت رشد، بین قسمت دوم، شورتز مکمل یا توقف موضوع یکی را انتخاب کن.":"پس از اتصال کانال، نتیجهٔ آخرین ویدئو این‌جا بررسی می‌شود.","۱۵ دقیقه"));
+  return actions;
+}
+function weeklyTasks(){
+  const now=dateAtNoon(new Date()),start=addDays(now,-((now.getDay()+1)%7)),{slots,plans}=publishingSignals(),best=slots[0],plan=plans[0],base=[
+    [0,"انتخاب موضوع و وعدهٔ اصلی","برنامه‌ریزی"],[1,"نوشتن متن و هوک ۳۰ ثانیهٔ اول","تولید"],[2,"ضبط و آماده‌سازی تصویر","تولید"],[3,`انتشار ${plan?.format==="short"?"شورتز":"ویدئوی اصلی"}`,best?`${best.weekday}، حدود ${n(best.recommendedHour)}:۰۰`:"زمان پیشنهادی"],[4,"ساخت یک محتوای مکمل کوتاه","بازتوزیع"],[5,"پاسخ به کامنت‌های مهم","مخاطب"],[6,"ارزیابی هفته و اصلاح برنامه","یادگیری"]
+  ];
+  const days=[...Array(7)].map((_,i)=>{const date=addDays(start,i),iso=localISO(date);return{date,iso,tasks:base.filter(x=>x[0]===i).map(x=>coachTask(`${iso}-${x[1]}`,x[1],x[2],x[3]||""))}});
+  state.coachExtraTasks.forEach(task=>{const target=days.find(d=>d.iso===task.date)||days.find(d=>d.iso>=localISO(now))||days.at(-1);if(target&&!target.tasks.some(x=>x.id===task.id))target.tasks.push(coachTask(task.id,task.title,task.detail||"پیشنهاد مربی",task.time||""))});return days;
+}
+function renderCoachGoals(metrics){
+  const goals=state.coachGoals,rows=[
+    ["برآورد بازدید پایان ماه",metrics.projectedViews,goals.views,n(metrics.projectedViews,"compact"),n(goals.views,"compact")],
+    ["برآورد درآمد پایان ماه",metrics.projectedRevenue,goals.revenue,formatDollar(metrics.projectedRevenue),formatDollar(goals.revenue)],
+    ["انتشارهای انجام‌شده",metrics.uploads,goals.uploads,n(metrics.uploads),n(goals.uploads)],
+    ["میانگین مشاهده",metrics.retention,goals.retention,`${n(metrics.retention,"decimal")}٪`,`${n(goals.retention)}٪`]
+  ];
+  document.getElementById("goalProgressList").innerHTML=rows.map(([label,value,target,valueText,targetText])=>`<div class="goal-row"><div class="goal-row-head"><span>${label}</span><strong>${valueText} از ${targetText}</strong></div><div class="goal-bar"><i style="--progress:${Math.min(100,value/Math.max(1,target)*100)}%"></i></div></div>`).join("");
+  const gap=goals.views-metrics.projectedViews,revenueGap=goals.revenue-metrics.projectedRevenue,onTrack=gap<=0&&revenueGap<=0;document.getElementById("coachForecast").innerHTML=`<strong>${onTrack?"با روند فعلی، هدف ماه دست‌یافتنی است.":"برای رسیدن به هدف، برنامه به یک حرکت قوی‌تر نیاز دارد."}</strong><p>${onTrack?"ریتم انتشار را حفظ کن و روی تکرار فرمول برنده تمرکز کن.":`${gap>0?`${n(gap,"compact")} بازدید`:"هدف بازدید تأمین است"}${gap>0&&revenueGap>0?" و ":""}${revenueGap>0?`${formatDollar(revenueGap)} درآمد`:""} تا برآورد هدف فاصله داریم.`}</p>`;
+  return onTrack;
+}
+function renderCoachEvaluation(){
+  const videos=(state.analysisVideos||[]).filter(v=>v.views>0),root=document.getElementById("lastEvaluation"),latest=[...videos].sort((a,b)=>new Date(b.publishedAt||b.date)-new Date(a.publishedAt||a.date))[0];if(!latest){root.innerHTML=`<div class="comment-empty">پس از اتصال کانال، اولین ارزیابی ساخته می‌شود.</div>`;return}
+  const medVelocity=median(videos.map(snapshotVelocity)),velocity=snapshotVelocity(latest),medRetention=median(videos.map(v=>v.retention||0)),medSubs=median(videos.map(subRate)),wins=[velocity>=medVelocity,latest.retention>=medRetention,subRate(latest)>=medSubs].filter(Boolean).length,status=wins>=2?"حرکت موفق":"نیازمند اصلاح";
+  document.getElementById("evaluationBadge").textContent=status;document.getElementById("evaluationBadge").style.color=wins>=2?"var(--green)":"var(--amber)";
+  root.innerHTML=`<p class="evaluation-summary">«${esc(shortTitle(latest.title,85))}» در ${n(wins)} مورد از سه معیار اصلی بهتر از میانهٔ کانال عمل کرده است.</p><div class="evaluation-metrics"><div><span>سرعت رشد روزانه</span><strong>${n(velocity,"compact")}</strong></div><div><span>میانگین مشاهده</span><strong>${n(latest.retention,"decimal")}٪</strong></div><div><span>مشترک/هزار بازدید</span><strong>${n(subRate(latest),"decimal")}</strong></div></div><div class="evaluation-note">${wins>=2?"نتیجه: فرمول موضوع و قالب ارزش یک آزمایش نزدیک دیگر را دارد.":"نتیجه: قبل از تکرار موضوع، تیتر، شروع ویدئو و تناسب طول را بازبینی کن."}</div>`;
+}
+function renderCoachRoadmap(metrics,onTrack){
+  const tasks=weeklyTasks().flatMap(d=>d.tasks),done=tasks.filter(t=>state.coachChecks[t.id]).length,weeklyPercent=Math.round(done/Math.max(1,tasks.length)*100),monthPercent=Math.round(Math.min(100,metrics.projectedViews/Math.max(1,state.coachGoals.views)*100));
+  document.getElementById("coachRoadmap").innerHTML=`<div class="roadmap-stage ${weeklyPercent>=80?"complete":"active"}"><span>مرحلهٔ ۱ · این هفته</span><h3>ساخت ریتم قابل‌تکرار</h3><p>یک چرخهٔ کامل از انتخاب موضوع تا ارزیابی نتیجه را تمام کن.</p><b>${n(weeklyPercent)}٪ برنامه انجام شده</b></div><div class="roadmap-stage ${weeklyPercent>=80?(onTrack?"complete":"active"):""}"><span>مرحلهٔ ۲ · این ماه</span><h3>تکرار فرمول برنده</h3><p>به‌جای پراکندگی، موضوع و قالبی را تکرار کن که هم تماشا و هم درآمد می‌سازد.</p><b>${n(monthPercent)}٪ از سرعت لازم</b></div><div class="roadmap-stage ${onTrack?"active":""}"><span>مرحلهٔ ۳ · تا پایان فصل</span><h3>درآمد پایدار و آرشیو زنده</h3><p>میان ویدئوی بلند، شورتز ورودی و تعامل با مخاطب یک چرخهٔ پایدار بساز.</p><b>${onTrack?"مسیر فعلی مناسب است":"پس از تثبیت ماه فعال می‌شود"}</b></div>`;
+}
+function renderCoach(){
+  const root=document.getElementById("view-coach");if(!root)return;const metrics=coachMetrics(),onTrack=renderCoachGoals(metrics),actions=coachTodayActions(),recs=buildRecommendations(),next=recs[0],confidence=(state.analysisVideos||[]).length>=20&&state.publicHistory.length>=7?"اطمینان بالا":(state.analysisVideos||[]).length>=6?"اطمینان متوسط":"اطمینان اولیه";
+  document.getElementById("coachToday").textContent=new Date().toLocaleDateString("fa-IR",{weekday:"long",day:"numeric",month:"long"});document.getElementById("coachDirection").textContent=onTrack?"روی مسیر":"نیاز به تمرکز";document.getElementById("coachConfidence").textContent=`${confidence} · بر پایهٔ ${n((state.analysisVideos||[]).length)} ویدئو`;
+  document.getElementById("coachHeadline").textContent=onTrack?"ریتم فعلی می‌تواند هدف ماه را تأمین کند.":"این ماه باید روی یک فرمول برنده متمرکز شویم.";document.getElementById("coachNarrative").textContent=next?`${next.title}. فعلاً مهم‌ترین کار این است که پیشنهاد را وارد برنامه کنیم و نتیجه‌اش را در ارزیابی بعدی بسنجیم.`:"پس از اتصال یوتیوب، مربی بر اساس سابقهٔ واقعی کانال برنامه می‌سازد.";
+  document.getElementById("todayActions").innerHTML=actions.map(a=>`<div class="coach-action ${a.done?"done":""}" data-coach-task="${esc(a.id)}"><button class="coach-action-check" aria-label="تغییر وضعیت">${a.done?"✓":""}</button><div><h3>${esc(a.title)}</h3><p>${esc(a.detail)}</p></div><span class="coach-action-time">${esc(a.time)}</span></div>`).join("");
+  const days=weeklyTasks();document.getElementById("weekCalendar").innerHTML=days.map(day=>`<div class="week-day ${day.iso===localISO(new Date())?"today":""}"><div class="week-day-head"><strong>${day.date.toLocaleDateString("fa-IR",{weekday:"long"})}</strong><span>${day.date.toLocaleDateString("fa-IR",{day:"numeric",month:"short"})}</span></div>${day.tasks.map(task=>`<label class="week-task ${task.done?"done":""}"><input type="checkbox" data-coach-task="${esc(task.id)}" ${task.done?"checked":""}><strong>${esc(task.title)}</strong><small>${esc(task.detail)}</small></label>`).join("")||`<small class="muted">زمان آزاد</small>`}</div>`).join("");
+  renderCoachEvaluation();document.getElementById("nextMoveTitle").textContent=next?.title||"قدم بعدی پیشنهادی";document.getElementById("nextMoveBody").textContent=next?.body||"با اتصال کانال، پیشنهاد اصلی بر اساس نتیجهٔ واقعی ویدئوها ساخته می‌شود.";document.getElementById("nextMoveProof").innerHTML=(next?.evidence||[]).slice(0,3).map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("");document.getElementById("addSuggestionBtn").disabled=!next;document.getElementById("addSuggestionBtn").dataset.suggestion=next?.action?.replace(/^اقدام:\s*/,"")||"";renderCoachRoadmap(metrics,onTrack);
+}
+
+function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={coach:"امروز قدم بعدی کانال را روشن کنیم.",overview:"این‌جا همهٔ عددها و شواهد پشت تصمیم‌هاست.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",comments:"گفت‌وگو با مخاطب، در یک صندوق واحد.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("pageSubtitle").textContent=name==="coach"?"برنامهٔ ساده، ارزیابی واقعی و مسیر قابل‌اصلاح":`عملکرد ${rangeText()} · مقایسه با ${comparisonText()}`;document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
 
 async function startOAuth(){
   const msg=document.getElementById("oauthMessage");
@@ -293,7 +347,7 @@ function snapshotVelocity(video){
   const age=Math.max(1,(Date.now()-new Date(video.publishedAt||video.date).getTime())/864e5);return video.views/Math.min(age,365);
 }
 async function loadPublicHistory(){
-  try{const response=await fetch(`data/public-snapshots.json?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`History ${response.status}`);const data=await response.json();state.publicHistory=(data.snapshots||[]).sort((a,b)=>a.date.localeCompare(b.date));state.historyUpdatedAt=data.updatedAt||null;renderAdvisor()}catch(e){console.warn("Public history unavailable",e)}
+  try{const response=await fetch(`data/public-snapshots.json?t=${Date.now()}`,{cache:"no-store"});if(!response.ok)throw new Error(`History ${response.status}`);const data=await response.json();state.publicHistory=(data.snapshots||[]).sort((a,b)=>a.date.localeCompare(b.date));state.historyUpdatedAt=data.updatedAt||null;renderAdvisor();renderCoach()}catch(e){console.warn("Public history unavailable",e)}
 }
 function tehranParts(date){const parts=new Intl.DateTimeFormat("fa-IR",{timeZone:"Asia/Tehran",weekday:"long",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date(date));const weekday=parts.find(x=>x.type==="weekday")?.value||"نامشخص",raw=parts.find(x=>x.type==="hour")?.value||"0";return{weekday,hour:Number(raw.replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)))||0}}
 function timeBucket(hour){if(hour<6)return{key:"night",label:"نیمه‌شب تا ۶"};if(hour<12)return{key:"morning",label:"۶ تا ۱۲"};if(hour<18)return{key:"afternoon",label:"۱۲ تا ۱۸"};return{key:"evening",label:"۱۸ تا ۲۴"}}
@@ -385,7 +439,7 @@ async function loadRecommendationDataset(token,channelItem){
     for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
     const recentById=new Map(state.videos.map(v=>[v.id,Number(v.views)||0]));
     state.analysisVideos=performance.map(r=>{const m=meta[r[0]],duration=parseDuration(m?.contentDetails?.duration||""),format=duration<=70?"short":"long",title=m?.snippet?.title||r[0],publishedAt=m?.snippet?.publishedAt||`${published}T12:00:00Z`;return{id:r[0],title,description:m?.snippet?.description||"",tags:m?.snippet?.tags||[],date:publishedAt.slice(0,10),publishedAt,duration,format,series:detectSeries(title,format),views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),retention:Number(r[3])||0,subs:Number(r[4])||0,revenue:revenueById.get(r[0])||0,recentViews:recentById.get(r[0])||0,thumb:m?.snippet?.thumbnails?.medium?.url||""}});
-    recordPerformanceSnapshot(state.analysisVideos);state.analysisUpdatedAt=Date.now();renderAdvisor();
+    recordPerformanceSnapshot(state.analysisVideos);state.analysisUpdatedAt=Date.now();renderAdvisor();renderCoach();
   }catch(e){console.error("Advisor analysis failed",e);showToast("تحلیل اختصاصی کامل نشد؛ دوباره امتحان کن")}
   finally{if(button){button.disabled=false;button.textContent="بازسازی پیشنهادها"}}
 }
@@ -425,7 +479,7 @@ function fillRangeDialog(){
   document.getElementById("rangeStart").value=state.range.start;document.getElementById("rangeEnd").value=state.range.end;document.getElementById("comparisonMode").value=state.comparisonMode;document.querySelectorAll("[data-dialog-preset]").forEach(b=>b.classList.toggle("active",b.dataset.dialogPreset===state.rangePreset));updateRangePreview();
 }
 function updateRangeUI(){
-  const quick=["7d","28d","90d"];document.querySelectorAll("[data-range-preset]").forEach(b=>b.classList.toggle("active",b.dataset.rangePreset===state.rangePreset));const more=document.getElementById("openRangeDialog"),label=document.getElementById("activeRangeLabel");if(more&&label){const advanced=!quick.includes(state.rangePreset);more.classList.toggle("has-custom",advanced);label.textContent=advanced?state.range.label:"بازه‌های بیشتر"}document.getElementById("pageSubtitle").textContent=`عملکرد ${rangeText()} · مقایسه با ${comparisonText()}`;
+  const quick=["7d","28d","90d"];document.querySelectorAll("[data-range-preset]").forEach(b=>b.classList.toggle("active",b.dataset.rangePreset===state.rangePreset));const more=document.getElementById("openRangeDialog"),label=document.getElementById("activeRangeLabel");if(more&&label){const advanced=!quick.includes(state.rangePreset);more.classList.toggle("has-custom",advanced);label.textContent=advanced?state.range.label:"بازه‌های بیشتر"}if(!document.getElementById("view-coach")?.classList.contains("active"))document.getElementById("pageSubtitle").textContent=`عملکرد ${rangeText()} · مقایسه با ${comparisonText()}`;
 }
 async function applyReportingRange(range,preset=range.key||"custom",comparisonMode=state.comparisonMode){
   if(!range.start||!range.end||range.start>range.end){showToast("بازهٔ زمانی معتبر نیست");return}if(range.end>localISO(new Date())){showToast("تاریخ پایان نمی‌تواند در آینده باشد");return}
@@ -434,6 +488,7 @@ async function applyReportingRange(range,preset=range.key||"custom",comparisonMo
 }
 
 document.addEventListener("DOMContentLoaded",()=>{
+  loadCoachState();
   renderAll();
   loadPublicHistory();
   loadFxRates();
@@ -445,6 +500,13 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.querySelectorAll("[data-dialog-preset]").forEach(b=>b.addEventListener("click",()=>{const key=b.dataset.dialogPreset;document.querySelectorAll("[data-dialog-preset]").forEach(x=>x.classList.toggle("active",x===b));state.pendingRangePreset=key;if(key!=="custom"){const r=presetRange(key);document.getElementById("rangeStart").value=r.start;document.getElementById("rangeEnd").value=r.end}updateRangePreview()}));
   ["rangeStart","rangeEnd","comparisonMode"].forEach(id=>document.getElementById(id)?.addEventListener("change",()=>{if(id!=="comparisonMode"){state.pendingRangePreset="custom";document.querySelectorAll("[data-dialog-preset]").forEach(x=>x.classList.toggle("active",x.dataset.dialogPreset==="custom"))}updateRangePreview()}));
   document.getElementById("rangeForm")?.addEventListener("submit",async e=>{e.preventDefault();const start=document.getElementById("rangeStart").value,end=document.getElementById("rangeEnd").value,mode=document.getElementById("comparisonMode").value,preset=state.pendingRangePreset||state.rangePreset,label=preset==="custom"?"بازهٔ دلخواه":presetRange(preset).label;if(start>end){showToast("تاریخ شروع باید قبل از پایان باشد");return}closeRange();await applyReportingRange({start,end,label,key:preset},preset,mode);state.pendingRangePreset=null});
+  const toggleCoachTask=id=>{state.coachChecks[id]=!state.coachChecks[id];saveCoachState();renderCoach()};
+  document.getElementById("todayActions")?.addEventListener("click",e=>{const task=e.target.closest("[data-coach-task]");if(task)toggleCoachTask(task.dataset.coachTask)});
+  document.getElementById("weekCalendar")?.addEventListener("change",e=>{const id=e.target.dataset.coachTask;if(id)toggleCoachTask(id)});
+  document.getElementById("rebuildPlanBtn")?.addEventListener("click",()=>{renderCoach();showToast("برنامه بر اساس تازه‌ترین داده‌ها بازسازی شد")});
+  document.getElementById("addSuggestionBtn")?.addEventListener("click",e=>{const title=e.currentTarget.dataset.suggestion;if(!title)return;const now=dateAtNoon(new Date()),date=localISO(addDays(now,now.getDay()===5?0:1)),id=`suggestion-${Date.now()}`;state.coachExtraTasks.push({id,title,date,detail:"پیشنهاد اولویت‌دار مربی",time:"۳۰ دقیقه"});saveCoachState();renderCoach();showToast("پیشنهاد به برنامهٔ هفته اضافه شد")});
+  const goalsDialog=document.getElementById("goalsDialog"),closeGoals=()=>goalsDialog.close();document.getElementById("editGoalsBtn")?.addEventListener("click",()=>{document.getElementById("goalViews").value=state.coachGoals.views;document.getElementById("goalRevenue").value=state.coachGoals.revenue;document.getElementById("goalUploads").value=state.coachGoals.uploads;document.getElementById("goalRetention").value=state.coachGoals.retention;goalsDialog.showModal()});document.getElementById("closeGoalsDialog")?.addEventListener("click",closeGoals);document.getElementById("cancelGoalsDialog")?.addEventListener("click",closeGoals);
+  document.getElementById("goalsForm")?.addEventListener("submit",e=>{e.preventDefault();state.coachGoals={views:Math.max(0,Number(document.getElementById("goalViews").value)||0),revenue:Math.max(0,Number(document.getElementById("goalRevenue").value)||0),uploads:Math.max(1,Number(document.getElementById("goalUploads").value)||1),retention:Math.min(100,Math.max(1,Number(document.getElementById("goalRetention").value)||1))};saveCoachState();closeGoals();renderCoach();showToast("هدف‌ها ذخیره و نقشهٔ راه به‌روز شد")});
   ["videoSearch","formatFilter","sortFilter"].forEach(id=>document.getElementById(id)?.addEventListener(id==="videoSearch"?"input":"change",renderVideoTable));
   document.getElementById("menuBtn").addEventListener("click",()=>document.getElementById("sidebar").classList.toggle("open"));
   const dialog=document.getElementById("connectionDialog");["connectBtn","settingsBtn"].forEach(id=>document.getElementById(id).addEventListener("click",()=>dialog.showModal()));
