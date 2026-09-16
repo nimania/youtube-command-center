@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260916-6" />
+    <link rel="stylesheet" href="styles.css?v=20260916-7" />
   </head>
   <body>
     <div class="noise"></div>
@@ -64,7 +64,7 @@
         <section class="view active" id="view-coach">
           <div class="coach-brief">
             <div class="coach-brief-copy"><span class="coach-avatar">ج</span><div><p class="eyebrow">جمع‌بندی مربی</p><h2 id="coachHeadline">در حال شناخت وضعیت کانال…</h2><p id="coachNarrative">آمار پشت صحنه بررسی می‌شود تا فقط تصمیم‌های لازم را ببینی.</p></div></div>
-            <div class="coach-direction"><span>وضعیت مسیر</span><strong id="coachDirection">در حال ارزیابی</strong><small id="coachConfidence">—</small></div>
+            <div class="coach-direction"><span>وضعیت مسیر</span><strong id="coachDirection">در حال ارزیابی</strong><small id="coachConfidence">—</small><button type="button" id="changeAnalysisScope">تغییر مبنای تحلیل</button></div>
           </div>
 
           <div class="coach-grid">
@@ -306,9 +306,30 @@
         <div class="dialog-actions"><button class="button ghost" type="button" id="cancelGoalsDialog">انصراف</button><button class="button primary" type="submit">ذخیره و بازسازی مسیر</button></div>
       </form>
     </dialog>
+    <dialog id="analysisScopeDialog" class="range-dialog">
+      <form class="dialog-card range-card" id="analysisScopeForm">
+        <button class="dialog-close" type="button" id="closeAnalysisScope" aria-label="بستن">×</button>
+        <p class="eyebrow">مبنای تصمیم‌های مربی</p><h2>کدام ویدئوها تحلیل شوند؟</h2>
+        <p id="analysisAvailability">در حال شمارش آرشیو قابل‌دسترسی…</p>
+        <div class="scope-presets" id="scopePresets">
+          <label><input type="radio" name="analysisScope" value="latest10"><span>آخرین ۱۰ ویدئو</span></label>
+          <label><input type="radio" name="analysisScope" value="latest25"><span>آخرین ۲۵ ویدئو</span></label>
+          <label><input type="radio" name="analysisScope" value="latest50"><span>آخرین ۵۰ ویدئو</span></label>
+          <label><input type="radio" name="analysisScope" value="latest100"><span>آخرین ۱۰۰ ویدئو</span></label>
+          <label><input type="radio" name="analysisScope" value="all" checked><span>کل آرشیو در دسترس</span></label>
+          <label><input type="radio" name="analysisScope" value="manual"><span>انتخاب دستی ویدئوها</span></label>
+        </div>
+        <div class="manual-video-picker" id="manualVideoPicker" hidden>
+          <div class="scope-picker-tools"><label class="search-box"><span>⌕</span><input type="search" id="scopeVideoSearch" placeholder="جست‌وجوی عنوان ویدئو…"></label><button type="button" class="text-btn" id="selectAllScopeVideos">انتخاب همه</button><button type="button" class="text-btn" id="clearScopeVideos">پاک‌کردن</button></div>
+          <div class="scope-selection-count" id="scopeSelectionCount"></div>
+          <div class="scope-video-list" id="scopeVideoList"></div>
+        </div>
+        <div class="dialog-actions"><button class="button ghost" type="button" id="cancelAnalysisScope">انصراف</button><button class="button primary" type="submit">اعمال و بازسازی مربی</button></div>
+      </form>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="config.js"></script>
-    <script src="app.js?v=20260916-6"></script>
+    <script src="app.js?v=20260916-7"></script>
   </body>
 </html>
