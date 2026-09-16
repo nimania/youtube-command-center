@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0d12" />
+    <meta name="description" content="مرکز فرمان و تحلیل کانال یوتیوب نیما افشارنادری" />
+    <title>مرکز فرمان یوتیوب | نیما افشارنادری</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="noise"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">ن</div>
+        <div><strong>مرکز فرمان</strong><span>YOUTUBE INTELLIGENCE</span></div>
+      </div>
+      <nav aria-label="ناوبری اصلی">
+        <button class="nav-item active" data-view="overview"><span>◫</span>نمای کلی</button>
+        <button class="nav-item" data-view="videos"><span>▶</span>تحلیل ویدئوها</button>
+        <button class="nav-item" data-view="series"><span>▦</span>مجموعه‌ها</button>
+        <button class="nav-item" data-view="audience"><span>◎</span>مخاطبان</button>
+        <button class="nav-item" data-view="reports"><span>↗</span>گزارش‌ها</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sync-card">
+          <span class="status-dot"></span>
+          <div><strong id="syncState">حالت نمایشی</strong><small id="syncTime">دادهٔ نمونه فعال است</small></div>
+        </div>
+        <button class="nav-item" id="settingsBtn"><span>⚙</span>تنظیم اتصال</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn" aria-label="بازکردن منو">☰</button>
+        <div class="channel-chip">
+          <div class="channel-avatar" id="channelAvatar">NA</div>
+          <div><strong id="channelName">Nima AfsharNaderi</strong><span id="channelHandle">@nimaafsharnaderi</span></div>
+        </div>
+        <div class="top-actions">
+          <div class="date-range" role="group" aria-label="بازه زمانی">
+            <button data-days="7">۷ روز</button><button class="active" data-days="28">۲۸ روز</button><button data-days="90">۹۰ روز</button>
+          </div>
+          <button class="button ghost" id="exportBtn">خروجی گزارش</button>
+          <button class="button primary" id="connectBtn"><span>G</span> اتصال به یوتیوب</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="welcome-row">
+          <div><p class="eyebrow">تصویر امروز کانال</p><h1 id="pageTitle">صبح بخیر نیما؛ این‌جا نبض کانال است.</h1><p id="pageSubtitle">عملکرد ۲۸ روز اخیر در مقایسه با دورهٔ پیش</p></div>
+          <div class="health-score"><div class="score-ring" id="scoreRing"><strong id="healthScore">۸۲</strong><small>از ۱۰۰</small></div><div><span>سلامت کانال</span><strong id="healthLabel">رو به رشد</strong></div></div>
+        </div>
+
+        <section class="view active" id="view-overview">
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="dashboard-grid top-grid">
+            <article class="panel chart-panel span-8">
+              <div class="panel-head"><div><p class="eyebrow">روند عملکرد</p><h2>بازدید و زمان تماشا</h2></div><div class="legend"><span><i class="blue"></i>بازدید</span><span><i class="red"></i>زمان تماشا</span></div></div>
+              <div class="line-chart" id="trendChart" aria-label="نمودار روند بازدید و زمان تماشا"></div>
+              <div class="chart-summary" id="trendSummary"></div>
+            </article>
+            <article class="panel insight-panel span-4">
+              <div class="panel-head"><div><p class="eyebrow">جمع‌بندی هوشمند</p><h2>جانِ آمار</h2></div><span class="spark">✦</span></div>
+              <div id="insightList" class="insight-list"></div>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel span-7">
+              <div class="panel-head"><div><p class="eyebrow">بهترین محتوا</p><h2>ویدئوهای پیشرو</h2></div><button class="text-btn" data-go="videos">مشاهده همه ←</button></div>
+              <div class="video-list" id="topVideos"></div>
+            </article>
+            <article class="panel span-5">
+              <div class="panel-head"><div><p class="eyebrow">ترکیب محتوا</p><h2>کدام قالب بهتر است؟</h2></div></div>
+              <div class="format-chart" id="formatChart"></div>
+              <div class="format-legend" id="formatLegend"></div>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="panel span-6">
+              <div class="panel-head"><div><p class="eyebrow">سرعت اولیه</p><h2>عملکرد ۲۴ ساعت نخست</h2></div><span class="pill">کلید رشد</span></div>
+              <div id="velocityChart" class="bar-chart"></div>
+            </article>
+            <article class="panel span-6">
+              <div class="panel-head"><div><p class="eyebrow">زمان انتشار</p><h2>نقشهٔ گرمایی هفتگی</h2></div><span class="muted">ساعت ایران</span></div>
+              <div id="heatmap" class="heatmap"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="view-videos">
+          <div class="section-tools">
+            <div class="search-box">⌕<input id="videoSearch" placeholder="جست‌وجو در عنوان ویدئوها…" /></div>
+            <select id="formatFilter"><option value="all">همهٔ قالب‌ها</option><option value="short">شورتز</option><option value="long">ویدئوی بلند</option></select>
+            <select id="sortFilter"><option value="views">بیشترین بازدید</option><option value="retention">بهترین ماندگاری</option><option value="subs">بیشترین جذب مشترک</option><option value="recent">جدیدترین</option></select>
+          </div>
+          <article class="panel table-panel">
+            <div class="table-wrap"><table><thead><tr><th>ویدئو</th><th>قالب</th><th>بازدید</th><th>زمان تماشا</th><th>میانگین مشاهده</th><th>مشترک</th><th>امتیاز</th></tr></thead><tbody id="videoTable"></tbody></table></div>
+          </article>
+        </section>
+
+        <section class="view" id="view-series">
+          <div class="series-intro"><div><p class="eyebrow">مقایسهٔ مجموعه‌ها</p><h2>کدام ستون محتوایی ارزش ادامه‌دادن دارد؟</h2></div><p>امتیاز ترکیبی از بازدید، زمان تماشا، ماندگاری و جذب مشترک محاسبه می‌شود.</p></div>
+          <div class="series-grid" id="seriesGrid"></div>
+          <article class="panel matrix-panel"><div class="panel-head"><div><p class="eyebrow">نقشهٔ تصمیم</p><h2>رشد مخاطب در برابر عمق تماشا</h2></div></div><div id="seriesMatrix" class="matrix"></div></article>
+        </section>
+
+        <section class="view" id="view-audience">
+          <div class="dashboard-grid">
+            <article class="panel span-7"><div class="panel-head"><div><p class="eyebrow">وفاداری مخاطب</p><h2>بازگشتی‌ها در برابر تازه‌واردها</h2></div></div><div id="audienceTrend" class="line-chart compact"></div></article>
+            <article class="panel span-5"><div class="panel-head"><div><p class="eyebrow">منابع کشف</p><h2>مخاطب از کجا می‌آید؟</h2></div></div><div id="sourceList" class="source-list"></div></article>
+          </div>
+          <div class="dashboard-grid"><article class="panel span-6"><div class="panel-head"><div><p class="eyebrow">جغرافیا</p><h2>کشورهای اصلی</h2></div></div><div id="countryList" class="country-list"></div></article><article class="panel span-6"><div class="panel-head"><div><p class="eyebrow">دستگاه</p><h2>نحوهٔ تماشا</h2></div></div><div id="deviceChart" class="device-chart"></div></article></div>
+        </section>
+
+        <section class="view" id="view-reports">
+          <div class="report-hero"><div><p class="eyebrow">گزارش مدیریتی</p><h2>از عدد تا تصمیم</h2><p>یک گزارش خلاصه و قابل‌استفاده برای برنامه‌ریزی هفتهٔ بعد بساز.</p></div><button class="button primary" id="generateReportBtn">ساخت گزارش تازه</button></div>
+          <div id="reportContent" class="report-grid"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="connectionDialog">
+      <form method="dialog" class="dialog-card">
+        <button class="dialog-close" value="cancel" aria-label="بستن">×</button>
+        <div class="dialog-icon">G</div><p class="eyebrow">اتصال امن</p><h2>اتصال حساب یوتیوب</h2>
+        <p>برای خواندن آمار خصوصی، باید Client ID گوگل در فایل تنظیمات وارد شود. رمز یا توکن در مخزن ذخیره نمی‌شود.</p>
+        <ol><li>فعال‌کردن YouTube Analytics API و YouTube Data API</li><li>ساخت OAuth Client از نوع Web application</li><li>افزودن آدرس GitHub Pages به Authorized JavaScript origins</li></ol>
+        <div class="dialog-actions"><button class="button ghost" value="cancel">فعلاً حالت نمایشی</button><button class="button primary" type="button" id="oauthStartBtn">ورود با گوگل</button></div>
+        <small id="oauthMessage"></small>
+      </form>
+    </dialog>
+    <div class="toast" id="toast" role="status"></div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
