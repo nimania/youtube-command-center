@@ -1,0 +1,44 @@
+name: Daily YouTube Snapshot
+
+on:
+  schedule:
+    - cron: "15 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-youtube-snapshot
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Collect public YouTube statistics
+        run: node scripts/collect-youtube-snapshot.mjs
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_CHANNEL_HANDLE: "@nimaafsharnaderi"
+
+      - name: Commit snapshot when changed
+        run: |
+          git config user.name "youtube-command-center[bot]"
+          git config user.email "youtube-command-center[bot]@users.noreply.github.com"
+          git add data/public-snapshots.json
+          if git diff --cached --quiet; then
+            echo "No snapshot changes"
+          else
+            git commit -m "data: save daily YouTube snapshot"
+            git push
+          fi
