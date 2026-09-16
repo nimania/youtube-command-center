@@ -20,8 +20,11 @@ const dayBase = [6100,7200,6800,8300,7900,9400,11200,9800,10500,8900,12100,11800
 const state = {
   days:28,mode:"demo",videos:[...demoVideos],daily:buildDaily(28),accessToken:null,
   revenue:buildDemoRevenue(),revenueMode:"demo",taxRate:20,revenueCurrency:"USD",
-  fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""}
+  fx:{usdToRial:null,usdToTry:null,updatedAt:null,source:""},
+  analysisVideos:buildDemoAnalysis(),recommendations:[],analysisUpdatedAt:null,channelItem:null
 };
+
+function buildDemoAnalysis(){return demoVideos.map((v,i)=>({...v,revenue:Number((v.views/1000*(v.format==="long"?3.8+i*.17:.22+i*.025)).toFixed(2)),duration:v.format==="long"?540+i*73:42+i,description:v.title,tags:[v.series],recentViews:v.views}))}
 
 function buildDaily(days){
   const slice=dayBase.slice(-Math.min(days,dayBase.length));
@@ -52,7 +55,7 @@ function sum(items,key){return items.reduce((a,x)=>a+(Number(x[key])||0),0)}
 function avg(items,key){return items.length?sum(items,key)/items.length:0}
 function showToast(message){const el=document.getElementById("toast");el.textContent=message;el.classList.add("show");clearTimeout(showToast.t);showToast.t=setTimeout(()=>el.classList.remove("show"),2800)}
 
-function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderReport();}
+function renderAll(){renderKPIs();renderTrend();renderInsights();renderTopVideos();renderFormats();renderVelocity();renderHeatmap();renderVideoTable();renderSeries();renderAudience();renderRevenue();renderAdvisor();renderReport();}
 
 function renderKPIs(){
   const views=sum(state.daily,"views"),watch=sum(state.daily,"watch"),subs=sum(state.daily,"subs"),ret=avg(state.videos,"retention");
@@ -169,7 +172,7 @@ async function loadRevenueData(token){
 
 function renderReport(){const top=[...state.videos].sort((a,b)=>b.score-a.score)[0],weak=[...state.videos].sort((a,b)=>a.retention-b.retention)[0],views=sum(state.daily,"views");document.getElementById("reportContent").innerHTML=`<article class="report-card"><h3>نتیجهٔ کلیدی دوره</h3><div class="report-number">${n(views,"compact")}</div><p>بازدید در ${n(state.days)} روز؛ روند کلی مثبت است و سرعت رشد در هفتهٔ اخیر افزایش یافته.</p></article><article class="report-card"><h3>برندهٔ دوره</h3><p><strong>${esc(top.title)}</strong></p><p>امتیاز ${n(top.score)} از ۱۰۰؛ ترکیب مناسبی از کلیک، ماندگاری و جذب مشترک.</p></article><article class="report-card wide"><h3>سه تصمیم پیشنهادی برای دورهٔ بعد</h3><ul><li>انتشار منظم جان کلام را حفظ کن؛ این مجموعه هم بازدید و هم مشترک می‌سازد.</li><li>برای ویدئوهای بلند، هوک را سریع‌تر وارد مسئله کن. «${esc(weak.title)}» کمترین ماندگاری این دوره را داشته است.</li><li>از موضوع‌های موفق بلند، یک شورتز مستقل بساز و در ۲۴ ساعت بعد منتشر کن.</li></ul></article><article class="report-card"><h3>هدف پیشنهادی</h3><p>افزایش میانگین ماندگاری ویدئوهای بلند به <strong>۵۵٪</strong> و تثبیت حداقل دو انتشار در هفته.</p></article><article class="report-card"><h3>آزمایش بعدی</h3><p>دو تیتر با ساختار «پرسش مستقیم» و «ادعای روشن» را روی موضوع‌های مشابه مقایسه کن.</p></article>`}
 
-function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
+function switchView(name){document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".nav-item[data-view]").forEach(x=>x.classList.toggle("active",x.dataset.view===name));document.getElementById(`view-${name}`)?.classList.add("active");const titles={overview:"صبح بخیر نیما؛ این‌جا نبض کانال است.",videos:"هر ویدئو، یک سرنخ برای تصمیم بعدی.",series:"ستون‌های محتوایی را با هم مقایسه کن.",audience:"ببین چه کسانی می‌آیند و چرا برمی‌گردند.",revenue:"درآمد را به عدد قابل‌استفاده تبدیل کن.",advisor:"پیشنهادهای اختصاصی برای قدم بعدی کانال.",reports:"عددها را به برنامهٔ عملی تبدیل کن."};document.getElementById("pageTitle").textContent=titles[name];document.getElementById("sidebar").classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
 
 async function startOAuth(){
   const msg=document.getElementById("oauthMessage");
@@ -180,18 +183,109 @@ async function startOAuth(){
 }
 async function api(url,token){const r=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error(`${r.status}: ${await r.text()}`);return r.json()}
 async function loadLiveData(token){
-  try{showToast("در حال دریافت آمار واقعی کانال…");const channel=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",token);const item=channel.items?.[0];if(!item)throw new Error("کانالی برای این حساب پیدا نشد");const end=new Date(),start=new Date();start.setDate(end.getDate()-state.days);const dates=`startDate=${start.toISOString().slice(0,10)}&endDate=${end.toISOString().slice(0,10)}`;
+  try{showToast("در حال دریافت آمار واقعی کانال…");const channel=await api("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",token);const item=channel.items?.[0];if(!item)throw new Error("کانالی برای این حساب پیدا نشد");state.channelItem=item;const end=new Date(),start=new Date();start.setDate(end.getDate()-state.days);const dates=`startDate=${start.toISOString().slice(0,10)}&endDate=${end.toISOString().slice(0,10)}`;
     const daily=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=day&metrics=views,estimatedMinutesWatched,subscribersGained&sort=day`,token);
     state.daily=(daily.rows||[]).map(r=>({date:r[0],views:r[1],watch:Math.round(r[2]/60),subs:r[3]}));
     const vr=await api(`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&${dates}&dimensions=video&metrics=views,estimatedMinutesWatched,averageViewPercentage,subscribersGained,likes,comments&sort=-views&maxResults=200`,token);
     const ids=(vr.rows||[]).map(r=>r[0]);let meta={};for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
     state.videos=(vr.rows||[]).map((r,i)=>{const m=meta[r[0]],title=m?.snippet?.title||r[0],duration=parseDuration(m?.contentDetails?.duration||"");const format=duration<=70?"short":"long";return{id:r[0],title,date:m?.snippet?.publishedAt?.slice(0,10)||"",format,series:detectSeries(title,format),views:r[1],watch:Math.round(r[2]/60),retention:r[3],subs:r[4],likes:r[5],comments:r[6],velocity:Math.round(r[1]*.42),score:scoreVideo(r[1],r[3],r[4]),thumb:m?.snippet?.thumbnails?.medium?.url}});
-    state.mode="live";document.getElementById("channelName").textContent=item.snippet.title;document.getElementById("channelAvatar").style.backgroundImage=`url('${item.snippet.thumbnails?.default?.url}')`;document.getElementById("channelAvatar").textContent="";document.getElementById("syncState").textContent="متصل به یوتیوب";document.getElementById("syncTime").textContent="همین حالا به‌روزرسانی شد";document.querySelector(".status-dot").style.background="var(--green)";renderAll();await loadRevenueData(token);showToast("آمار واقعی کانال با موفقیت دریافت شد");
+    state.mode="live";document.getElementById("channelName").textContent=item.snippet.title;document.getElementById("channelAvatar").style.backgroundImage=`url('${item.snippet.thumbnails?.default?.url}')`;document.getElementById("channelAvatar").textContent="";document.getElementById("syncState").textContent="متصل به یوتیوب";document.getElementById("syncTime").textContent="همین حالا به‌روزرسانی شد";document.querySelector(".status-dot").style.background="var(--green)";renderAll();await loadRevenueData(token);await loadRecommendationDataset(token,item);showToast("آمار و پیشنهادهای اختصاصی به‌روز شد");
   }catch(e){console.error(e);showToast("دریافت آمار کامل نشد؛ تنظیمات API را بررسی کن")}
 }
 function parseDuration(s){const m=s.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);return m?Number(m[1]||0)*3600+Number(m[2]||0)*60+Number(m[3]||0):0}
 function detectSeries(title,format){if(/جان کلام/.test(title))return format==="short"?"جان کلام کوتاه":"جان کلام";if(/رستوران|کافه|منو|غذا/.test(title))return"صنعت غذا";if(/زندگی/.test(title))return"زندگی‌های نزیسته";return"خبر و تحلیل"}
 function scoreVideo(views,ret,subs){const max=Math.max(1,...state.videos.map(v=>v.views));return Math.min(99,Math.round((views/max)*38+(ret/100)*42+Math.min(subs/250,1)*20))}
+
+function median(values){const a=values.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return 0;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function videoRPM(v){return v.views>0?(Number(v.revenue)||0)/v.views*1000:0}
+function subRate(v){return v.views>0?(Number(v.subs)||0)/v.views*1000:0}
+function formatDollar(value){return new Intl.NumberFormat("fa-IR",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(value||0)}
+function shortTitle(title="",limit=54){return title.length>limit?`${title.slice(0,limit)}…`:title}
+
+function topicSignals(videos){
+  const stop=new Set("از به در با برای که این آن یک و یا را های ها می شود شده بود است اگر اما تا بر روی چه چرا هر خود تو من ما شما آنها درباره بعد پیش خیلی بیش کمتر بدون فقط وقتی چگونه کدام فیلم ویدئو youtube shorts video the a an of to in for on and is are".split(" "));
+  const topics=new Map();
+  videos.forEach(v=>{
+    const text=[v.title,v.description,...(v.tags||[])].join(" ").toLowerCase().replace(/[\u200c_\-–—|،؛:!?؟()[\]{}«»'".,/\\]+/g," ");
+    const words=[...new Set(text.split(/\s+/).map(x=>x.trim()).filter(x=>x.length>2&&!stop.has(x)&&!/^\d+$/.test(x)))];
+    const quality=Math.log10((v.views||0)+10)*(1+Math.min(videoRPM(v),20)/12)*(1+(v.retention||0)/150);
+    words.slice(0,40).forEach(word=>topics.set(word,(topics.get(word)||0)+quality));
+  });
+  return [...topics.entries()].map(([word,score])=>({word,score})).sort((a,b)=>b.score-a.score).slice(0,18);
+}
+
+function buildRecommendations(){
+  const videos=state.analysisVideos.filter(v=>v.views>0),recs=[];
+  if(!videos.length)return recs;
+  const long=videos.filter(v=>v.format==="long"),shorts=videos.filter(v=>v.format==="short");
+  const rpmMedian=median(videos.map(videoRPM)),retMedian=median(videos.map(v=>v.retention||0));
+  const totalRevenue=sum(videos,"revenue"),totalViews=sum(videos,"views");
+  const add=(priority,icon,color,title,why,body,evidence,action,score)=>recs.push({priority,icon,color,title,why,body,evidence,action,score});
+
+  const seriesMap={};videos.forEach(v=>(seriesMap[v.series||"سایر"]??=[]).push(v));
+  const bestSeries=Object.entries(seriesMap).map(([name,items])=>({name,items,revenue:sum(items,"revenue"),views:sum(items,"views"),watch:sum(items,"watch"),rpm:sum(items,"revenue")/Math.max(1,sum(items,"views"))*1000})).sort((a,b)=>b.revenue-a.revenue)[0];
+  if(bestSeries)add("اولویت بالا","◆","#38d39f",`روی «${bestSeries.name}» بیشتر سرمایه‌گذاری کن`,`درآمدسازترین خانوادهٔ محتوایی کانال`,`${n(bestSeries.items.length)} ویدئوی این مجموعه بیشترین سهم درآمد را ساخته‌اند. یک دنبالهٔ نزدیک به موضوع و قالب برنده منتشر کن.`,[["درآمد",formatDollar(bestSeries.revenue)],["RPM تقریبی",formatDollar(bestSeries.rpm)],["زمان تماشا",`${n(bestSeries.watch,"compact")} ساعت`]],"اقدام: موضوع مشترک ۳ برنده را به قسمت بعدی تبدیل کن",98);
+
+  const bestRpm=[...videos].filter(v=>v.views>=Math.max(500,totalViews/videos.length*.2)).sort((a,b)=>videoRPM(b)-videoRPM(a))[0];
+  if(bestRpm)add("درآمد","$","#ffbd59","فرمول این ویدئو را تکرار کن",`RPM آن ${n(videoRPM(bestRpm)/Math.max(.01,rpmMedian),"decimal")} برابر میانهٔ کانال است`,`«${shortTitle(bestRpm.title)}» به ازای هر هزار بازدید درآمد بیشتری ساخته؛ موضوع، طول و نوع وعدهٔ عنوانش را به‌عنوان الگوی آزمایش بعدی نگه دار.`,[["RPM",formatDollar(videoRPM(bestRpm))],["درآمد",formatDollar(bestRpm.revenue)],["بازدید",n(bestRpm.views,"compact")]],"اقدام: یک ویدئوی هم‌خانواده با زاویهٔ تازه بساز",94);
+
+  const longWinner=[...long].sort((a,b)=>b.watch-a.watch)[0];
+  if(longWinner&&shorts.length)add("رشد و درآمد","↗","#6d8cff","از ویدئوی عمیق، ورودی کوتاه بساز","بیشترین زمان تماشای ویدئوهای بلند",`«${shortTitle(longWinner.title)}» ظرفیت تبدیل‌شدن به ۲ تا ۳ شورت مستقل را دارد؛ هر شورت باید به ویدئوی کامل هدایت کند.`,[["زمان تماشا",`${n(longWinner.watch,"compact")} ساعت`],["ماندگاری",`${n(longWinner.retention,"decimal")}٪`],["مشترک",`+${n(longWinner.subs)}`]],"اقدام: سه نقطهٔ اوج را به کلیپ ۳۰ تا ۵۵ ثانیه‌ای تبدیل کن",88);
+
+  const leakage=[...videos].filter(v=>v.views>=median(videos.map(x=>x.views))&&videoRPM(v)<rpmMedian*.65).sort((a,b)=>b.views-a.views)[0];
+  if(leakage)add("بهینه‌سازی","⇄","#a779ff","بازدید این ویدئو را به درآمد وصل کن","بازدید خوب دارد، اما RPM زیر میانه است",`«${shortTitle(leakage.title)}» توجه گرفته ولی درآمد متناسب نساخته است. پایان و توضیحاتش را به یک ویدئوی بلندِ پُرRPM متصل کن.`,[["بازدید",n(leakage.views,"compact")],["RPM",formatDollar(videoRPM(leakage))],["فاصله با میانه",`${n((1-videoRPM(leakage)/Math.max(.01,rpmMedian))*100)}٪`]],"اقدام: لینک، کامنت سنجاق‌شده و انداسکرین هدفمند اضافه کن",84);
+
+  const weakRetention=[...videos].filter(v=>v.views>=median(videos.map(x=>x.views))&&v.retention<retMedian*.82).sort((a,b)=>b.views-a.views)[0];
+  if(weakRetention)add("نگهداشت","◷","#ff4e61","شروع این ویدئو را بازطراحی کن","تقاضا وجود دارد اما بخشی از تماشا از دست می‌رود",`«${shortTitle(weakRetention.title)}» بازدید کافی گرفته ولی ماندگاری‌اش پایین‌تر از الگوی کانال است؛ وعدهٔ عنوان را در ۱۵ ثانیهٔ اول سریع‌تر تحویل بده.`,[["ماندگاری",`${n(weakRetention.retention,"decimal")}٪`],["میانهٔ کانال",`${n(retMedian,"decimal")}٪`],["بازدید",n(weakRetention.views,"compact")]],"اقدام: مقدمه را حذف و با نتیجه یا سؤال اصلی شروع کن",80);
+
+  const evergreen=[...videos].filter(v=>v.recentViews>0&&Date.now()-new Date(v.date).getTime()>90*864e5).sort((a,b)=>b.recentViews-a.recentViews)[0];
+  if(evergreen)add("فرصت تازه","↻","#38d39f","این موضوع قدیمی هنوز زنده است","با وجود قدمت، در ۲۸ روز اخیر بازدید گرفته",`«${shortTitle(evergreen.title)}» هنوز تقاضا دارد. نسخهٔ به‌روزشده یا پاسخ به تحولات جدید می‌تواند سریع‌تر از یک موضوع کاملاً تازه رشد کند.`,[["بازدید ۲۸ روز",n(evergreen.recentViews,"compact")],["کل بازدید",n(evergreen.views,"compact")],["درآمد",formatDollar(evergreen.revenue)]],"اقدام: نسخهٔ «چه چیزی تغییر کرده؟» را منتشر کن",76);
+
+  const topic=topicSignals(videos)[0];
+  if(topic)add("سیگنال موضوعی","#","#6d8cff",`خوشهٔ «${topic.word}» را آزمایش کن`,`این واژه در محتوای پُرتماشا و پردرآمد تکرار شده است`,`وزن این پیشنهاد از عنوان، توضیحات و تگ‌ها همراه با درآمد، بازدید و ماندگاری واقعی محاسبه شده است.`,[["رتبهٔ موضوع","۱"],["ویدئوی بررسی‌شده",n(videos.length)],["درآمد پوشش‌داده‌شده",formatDollar(totalRevenue)]],"اقدام: سه زاویهٔ تازه برای همین خوشه بنویس",72);
+  return recs.sort((a,b)=>b.score-a.score).slice(0,6);
+}
+
+function renderAdvisor(){
+  const root=document.getElementById("recommendationList");if(!root)return;
+  const videos=state.analysisVideos||[],revenue=sum(videos,"revenue"),recs=buildRecommendations();state.recommendations=recs;
+  const live=state.mode==="live"&&state.analysisUpdatedAt;
+  document.getElementById("advisorSummary").textContent=live?`از ${n(videos.length)} ویدئو و عملکرد واقعی آن‌ها، ${n(recs.length)} فرصت اولویت‌دار پیدا شد.`:"نمونهٔ پیشنهادها را می‌بینی؛ پس از اتصال، تحلیل با کل آرشیو واقعی کانال جایگزین می‌شود.";
+  const score=Math.min(96,Math.round(55+recs.reduce((a,r)=>a+r.score,0)/Math.max(1,recs.length)*.35));
+  document.getElementById("opportunityScore").textContent=n(score);document.querySelector(".advisor-score")?.style.setProperty("--score",`${score}%`);
+  document.getElementById("analyzedCount").textContent=n(videos.length);document.getElementById("analyzedRevenue").textContent=formatDollar(revenue);document.getElementById("analysisTime").textContent=state.analysisUpdatedAt?new Date(state.analysisUpdatedAt).toLocaleTimeString("fa-IR",{hour:"2-digit",minute:"2-digit"}):"دادهٔ نمونه";
+  root.innerHTML=recs.map(r=>`<article class="recommendation-card" style="--rec-color:${r.color}"><div class="recommendation-head"><div><span class="rec-icon">${r.icon}</span><div><h3>${esc(r.title)}</h3><p class="why">${esc(r.why)}</p></div></div><span class="priority">${r.priority}</span></div><p>${esc(r.body)}</p><div class="evidence-box">${r.evidence.map(([label,value])=>`<div><span>${esc(label)}</span><strong>${esc(value)}</strong></div>`).join("")}</div><div class="rec-action"><span>قدم پیشنهادی</span><strong>${esc(r.action.replace(/^اقدام:\s*/,""))}</strong></div></article>`).join("")||`<div class="panel">برای ساخت پیشنهاد، دادهٔ کافی از ویدئوها پیدا نشد.</div>`;
+  const ranked=[...videos].sort((a,b)=>videoRPM(b)-videoRPM(a)).slice(0,10);
+  document.getElementById("economicsTable").innerHTML=ranked.map(v=>`<tr><td title="${esc(v.title)}">${esc(shortTitle(v.title,42))}</td><td>${formatDollar(v.revenue)}</td><td>${formatDollar(videoRPM(v))}</td><td>${n(v.retention,"decimal")}٪</td><td>${n(subRate(v),"decimal")}</td></tr>`).join("")||`<tr><td colspan="5">هنوز داده‌ای نیست.</td></tr>`;
+  const colors=["#6d8cff","#a779ff","#38d39f","#ffbd59","#ff7b8a"],topics=topicSignals(videos),max=topics[0]?.score||1,min=topics.at(-1)?.score||0;
+  document.getElementById("topicCloud").innerHTML=topics.map((t,i)=>`<span class="topic-tag" style="--tag-color:${colors[i%colors.length]};--tag-size:${10+((t.score-min)/Math.max(.01,max-min))*8}px">${esc(t.word)}</span>`).join("")||"سیگنال موضوعی کافی نیست.";
+}
+
+async function analyticsPages(baseUrl,token){
+  const rows=[];let startIndex=1;
+  for(let page=0;page<20;page++){
+    const separator=baseUrl.includes("?")?"&":"?",data=await api(`${baseUrl}${separator}maxResults=200&startIndex=${startIndex}`,token),batch=data.rows||[];rows.push(...batch);
+    if(batch.length<200)break;startIndex+=batch.length;
+  }
+  return rows;
+}
+
+async function loadRecommendationDataset(token,channelItem){
+  const button=document.getElementById("refreshAdviceBtn");if(button){button.disabled=true;button.textContent="در حال تحلیل…"}
+  try{
+    const today=localISO(new Date()),published=(channelItem?.snippet?.publishedAt||"2005-01-01").slice(0,10),base=`https://youtubeanalytics.googleapis.com/v2/reports?ids=channel%3D%3DMINE&startDate=${published}&endDate=${today}&dimensions=video`;
+    const [performance,money]=await Promise.all([
+      analyticsPages(`${base}&sort=-views&metrics=views,estimatedMinutesWatched,averageViewPercentage,subscribersGained`,token),
+      analyticsPages(`${base}&sort=-estimatedRevenue&metrics=estimatedRevenue&currency=USD`,token)
+    ]);
+    const revenueById=new Map(money.map(r=>[r[0],Number(r[1])||0])),ids=performance.map(r=>r[0]),meta={};
+    for(let i=0;i<ids.length;i+=50){const res=await api(`https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics&id=${ids.slice(i,i+50).join(",")}`,token);res.items?.forEach(v=>meta[v.id]=v)}
+    const recentById=new Map(state.videos.map(v=>[v.id,Number(v.views)||0]));
+    state.analysisVideos=performance.map(r=>{const m=meta[r[0]],duration=parseDuration(m?.contentDetails?.duration||""),format=duration<=70?"short":"long",title=m?.snippet?.title||r[0];return{id:r[0],title,description:m?.snippet?.description||"",tags:m?.snippet?.tags||[],date:m?.snippet?.publishedAt?.slice(0,10)||published,duration,format,series:detectSeries(title,format),views:Number(r[1])||0,watch:Math.round((Number(r[2])||0)/60),retention:Number(r[3])||0,subs:Number(r[4])||0,revenue:revenueById.get(r[0])||0,recentViews:recentById.get(r[0])||0,thumb:m?.snippet?.thumbnails?.medium?.url||""}});
+    state.analysisUpdatedAt=Date.now();renderAdvisor();
+  }catch(e){console.error("Advisor analysis failed",e);showToast("تحلیل اختصاصی کامل نشد؛ دوباره امتحان کن")}
+  finally{if(button){button.disabled=false;button.textContent="بازسازی پیشنهادها"}}
+}
 
 document.addEventListener("DOMContentLoaded",()=>{
   renderAll();
@@ -208,4 +302,5 @@ document.addEventListener("DOMContentLoaded",()=>{
   document.getElementById("taxRate").addEventListener("input",e=>{state.taxRate=Math.min(100,Math.max(0,Number(e.target.value)||0));renderRevenue()});
   document.getElementById("revenueCurrency").addEventListener("change",e=>{state.revenueCurrency=e.target.value;renderRevenue()});
   document.getElementById("manualRate").addEventListener("change",e=>{const toman=Number(e.target.value);if(toman>0){localStorage.setItem("nimaManualUsdToman",String(toman));state.fx.usdToRial=toman*10;state.fx.source="نرخ دستی شما";state.fx.updatedAt=new Date();renderRevenue();showToast("نرخ دستی دلار ذخیره شد")}else{localStorage.removeItem("nimaManualUsdToman");loadFxRates()}});
+  document.getElementById("refreshAdviceBtn")?.addEventListener("click",()=>{if(!state.accessToken){showToast("برای تحلیل واقعی، ابتدا حساب یوتیوب را متصل کن");return}loadRecommendationDataset(state.accessToken,state.channelItem)});
 });
